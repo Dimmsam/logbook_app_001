@@ -11,7 +11,32 @@ class CounterController {
     }
   } // Setter untuk nilai langkah baru
 
-  void increment() => _counter += step;
-  void decrement() { if (_counter > 0) _counter -= step; }
-  void reset() => _counter = 0;
+  final List<String> _history = []; // Riwayat perubahan counter
+  List<String> get history => _history; // Getter untuk riwayat
+  void addHistory(String action) {
+    final time = DateTime.now();
+    if (action == 'mereset') {
+      _history.add("User $action pada jam ${time.hour}:${time.minute}");
+    } else {
+      _history.add("User $action sebesar $_step pada jam ${time.hour}:${time.minute}");
+    }
+    if (_history.length > 5) {
+      _history.removeAt(0); // Hapus entri paling lama jika sudah 5
+    }
+  }
+
+  void increment() {
+    _counter += _step;
+    addHistory('menambahkan');
+  }
+
+  void decrement() {
+    if (_counter > 0 && _counter >= step) _counter -= _step;
+    addHistory('mengurangi');
+  }
+
+  void reset() {
+    _counter = 0;
+    addHistory('mereset');
+  }
 }

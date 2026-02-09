@@ -26,23 +26,50 @@ class _CounterViewState extends State<CounterView> {
             const SizedBox(height: 20),
             SizedBox(
               width: 200,
-              height: 100,
+              height: 80,
               child: TextField(
                 controller: _stepController,
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
                 decoration: const InputDecoration(
                   labelText: 'Atur Langkah',
+                  labelStyle: TextStyle(fontSize: 12),
                   border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.all(8),
                 ),
+                style: const TextStyle(fontSize: 14),
                 onChanged: (value) => setState(() {
                   final int? newStep = int.tryParse(value);
                   if (newStep != null && newStep > 0) {
                     _controller.setStep(newStep);
                   }
                 }),
-              )
-            )
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              "Riwayat Aktivitas",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 200,
+              child: ListView.builder(
+                itemCount: _controller.history.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Center(
+                      child: Text(
+                        _controller.history[index],
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -50,16 +77,19 @@ class _CounterViewState extends State<CounterView> {
         spacing: 12,
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          FloatingActionButton(onPressed: () => setState(() => _controller.increment()),
+          FloatingActionButton(
+            onPressed: () => setState(() => _controller.increment()),
             child: const Icon(Icons.add),
           ),
-          FloatingActionButton(onPressed: () => setState(() => _controller.decrement()),
+          FloatingActionButton(
+            onPressed: () => setState(() => _controller.decrement()),
             child: const Icon(Icons.remove),
           ),
-          FloatingActionButton(onPressed: () => setState(() => _controller.reset()),
+          FloatingActionButton(
+            onPressed: () => setState(() => _controller.reset()),
             child: const Icon(Icons.refresh),
           ),
-        ]
+        ],
       ),
     );
   }
