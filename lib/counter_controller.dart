@@ -17,10 +17,12 @@ class CounterController {
     final time = DateTime.now();
     if (action == 'mereset') {
       _history.add("User $action pada jam ${time.hour}:${time.minute}");
+    } else if (action == 'mengurangi' && _counter < step){
+      _history.add("Tidak dapat mengurangi, nilai counter kurang dari langkah!",);
     } else {
       _history.add("User $action sebesar $_step pada jam ${time.hour}:${time.minute}");
     }
-    if (_history.length > 5) {
+    if (_history.length >= 5) {
       _history.removeAt(0); // Hapus entri paling lama jika sudah 5
     }
   }
