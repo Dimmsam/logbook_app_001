@@ -19,8 +19,9 @@ class _CounterViewState extends State<CounterView> {
       appBar: AppBar(title: const Text("LogBook: Versi SRP")),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
+            const SizedBox(height: 20),
             const Text("Total Hitungan:"),
             Text('${_controller.value}', style: const TextStyle(fontSize: 40)),
             const SizedBox(height: 20),
@@ -35,7 +36,6 @@ class _CounterViewState extends State<CounterView> {
                   labelText: 'Atur Langkah',
                   labelStyle: TextStyle(fontSize: 12),
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.all(8),
                 ),
                 style: const TextStyle(fontSize: 14),
                 onChanged: (value) => setState(() {
@@ -51,9 +51,8 @@ class _CounterViewState extends State<CounterView> {
               "Riwayat Aktivitas",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
             ),
-            const SizedBox(height: 8),
             SizedBox(
-              height: 200,
+              height: 223,
               child: ListView.builder(
                 itemCount: _controller.history.length,
                 itemBuilder: (context, index) {
@@ -65,7 +64,6 @@ class _CounterViewState extends State<CounterView> {
                       ),
                     ),
                     dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                   );
                 },
               ),
