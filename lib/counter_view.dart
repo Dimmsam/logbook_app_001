@@ -16,7 +16,14 @@ class _CounterViewState extends State<CounterView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("LogBook: Versi SRP")),
+      appBar: AppBar(
+        title: const Text(
+          "LogBook: Versi SRP",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Color(0xfff4f1de),
+        foregroundColor: Color(0xffe07a5f),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
@@ -77,18 +84,64 @@ class _CounterViewState extends State<CounterView> {
         children: [
           FloatingActionButton(
             onPressed: () => setState(() => _controller.increment()),
+            backgroundColor: Color(0xff8ABB6C),
+            foregroundColor: Colors.white,
+            elevation: 6,
             child: const Icon(Icons.add),
           ),
           FloatingActionButton(
             onPressed: () => setState(() => _controller.decrement()),
+            backgroundColor: Color(0xffFF8989),
+            foregroundColor: Colors.white,
+            elevation: 6,
             child: const Icon(Icons.remove),
           ),
           FloatingActionButton(
-            onPressed: () => setState(() => _controller.reset()),
+            onPressed: () => _showRestartDialog(context),
+            backgroundColor: Color(0xff7FA9C0),
+            foregroundColor: Colors.white,
+            elevation: 6,
             child: const Icon(Icons.refresh),
           ),
         ],
       ),
     );
+  }
+
+  void _showRestartDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Konfirmasi Restart"),
+          content: const Text("Apakah Anda yakin ingin mereset counter ke 0?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text("Batal"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                setState(() => _controller.reset());
+                _showSuccessRestart("Berhasil mereset counter!", context);
+              },
+              child: const Text("Restart"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSuccessRestart(String message, BuildContext context) {
+    final snackBar = SnackBar(
+      content: Text(message),
+      duration: const Duration(seconds: 2),
+      backgroundColor: Colors.green,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 }
