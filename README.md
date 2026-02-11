@@ -1,16 +1,3 @@
-# logbook_app_001
+“Bagaimana prinsip SRP membantu kalian saat harus menambah fitur History Logger tadi?”
 
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Prinsip SRP sangat membantu sekali terutama dengan pemisahan tanggung jawab file antara logic dan tampilan yang benar-benar perlu diperhatikan jadi ketika membuat fitur history logger itu tidak bingung harus gimana, seperti yang saya lakukan ialah pertama saya coba tambahkan dulu logic untuk history nya di contrller dimana disana saya karena tambahkan terlebih dahulu variabel baru List<String> untuk menyimpan histori nantinya lalu selanjutnya saya juga membuat logika penampilan riwayat dengan menggunakan juga fungsi logika yang sudah ada tinggal saya modfikasi saja seperti logika increment, decrement, dan reset nya untuk sekalian juga menampilkan riwayat histori. Barulah setelahnya saya modifikasi tampilannya mau kaya gimana di bagian view.
