@@ -21,89 +21,155 @@ class _CounterViewState extends State<CounterView> {
           "LogBook: Versi SRP",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Color(0xfff4f1de),
-        foregroundColor: Color(0xffe07a5f),
+        backgroundColor: Color(0xfff2cc8f),
+        foregroundColor: Color(0xff3d405b),
+        scrolledUnderElevation: 0,
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            const SizedBox(height: 20),
-            const Text("Total Hitungan:"),
-            Text('${_controller.value}', style: const TextStyle(fontSize: 40)),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: 200,
-              height: 80,
-              child: TextField(
-                controller: _stepController,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                decoration: const InputDecoration(
-                  labelText: 'Atur Langkah',
-                  labelStyle: TextStyle(fontSize: 12),
-                  border: OutlineInputBorder(),
-                ),
-                style: const TextStyle(fontSize: 14),
-                onChanged: (value) => setState(() {
-                  final int? newStep = int.tryParse(value);
-                  if (newStep != null && newStep > 0) {
-                    _controller.setStep(newStep);
-                  }
-                }),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              "Riwayat Aktivitas",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            SizedBox(
-              height: 223,
-              child: ListView.builder(
-                itemCount: _controller.history.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Center(
-                      child: Text(
-                        _controller.history[index],
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    dense: true,
-                  );
-                },
-              ),
-            ),
-          ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomRight,
+            colors: [Color(0xfff2cc8f), Color(0xfff4f1de)],
+          ),
         ),
-      ),
-      floatingActionButton: Column(
-        spacing: 12,
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: () => setState(() => _controller.increment()),
-            backgroundColor: Color(0xff8ABB6C),
-            foregroundColor: Colors.white,
-            elevation: 6,
-            child: const Icon(Icons.add),
+
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const SizedBox(height: 70),
+              const Text(
+                "Total Hitungan:",
+                style: TextStyle(color: Color(0xff3d405b)),
+              ),
+              Text(
+                '${_controller.value}',
+                style: const TextStyle(
+                  fontSize: 80,
+                  color: Color(0xff3d405b),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 5),
+              SizedBox(
+                width: 200,
+                height: 60,
+                child: TextField(
+                  controller: _stepController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    labelText: 'Atur Langkah',
+                    labelStyle: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xff3d405b),
+                    ),
+                    border: OutlineInputBorder(),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xff3d405b),
+                  ),
+                  onChanged: (value) => setState(() {
+                    final int? newStep = int.tryParse(value);
+                    if (newStep != null && newStep > 0) {
+                      _controller.setStep(newStep);
+                    }
+                  }),
+                ),
+              ),
+
+              const SizedBox(height: 45),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: 12,
+                children: [
+                  FloatingActionButton(
+                    onPressed: () => setState(() => _controller.increment()),
+                    backgroundColor: Color(0xff8ABB6C),
+                    foregroundColor: Colors.white,
+                    elevation: 6,
+                    child: const Icon(Icons.add),
+                  ),
+                  FloatingActionButton(
+                    onPressed: () => setState(() => _controller.decrement()),
+                    backgroundColor: Color(0xffFF8989),
+                    foregroundColor: Colors.white,
+                    elevation: 6,
+                    child: const Icon(Icons.remove),
+                  ),
+                  FloatingActionButton(
+                    onPressed: () => _showRestartDialog(context),
+                    backgroundColor: Color(0xff7FA9C0),
+                    foregroundColor: Colors.white,
+                    elevation: 6,
+                    child: const Icon(Icons.refresh),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 60),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Divider(color: Color(0xff3d405b), thickness: 1.5),
+              ),
+
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.history, size: 20, color: Color(0xff3d405b)),
+                        SizedBox(width: 8),
+                        Text(
+                          "Riwayat Aktivitas",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xff3d405b),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    _controller.history.isEmpty
+                        ? const Text(
+                            "Belum ada aktivitas",
+                            style: TextStyle(color: Color(0xff3d405b)),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _controller.history.length,
+                            itemBuilder: (context, index) {
+                              final historyItem = _controller.history[index];
+
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  historyItem,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Color(0xff3d405b),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              );
+                            },
+                          ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 209),
+            ],
           ),
-          FloatingActionButton(
-            onPressed: () => setState(() => _controller.decrement()),
-            backgroundColor: Color(0xffFF8989),
-            foregroundColor: Colors.white,
-            elevation: 6,
-            child: const Icon(Icons.remove),
-          ),
-          FloatingActionButton(
-            onPressed: () => _showRestartDialog(context),
-            backgroundColor: Color(0xff7FA9C0),
-            foregroundColor: Colors.white,
-            elevation: 6,
-            child: const Icon(Icons.refresh),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -128,7 +194,7 @@ class _CounterViewState extends State<CounterView> {
                 setState(() => _controller.reset());
                 _showSuccessRestart("Berhasil mereset counter!", context);
               },
-              child: const Text("Restart"),
+              child: const Text("Restart", style: TextStyle(color: Colors.red)),
             ),
           ],
         );
