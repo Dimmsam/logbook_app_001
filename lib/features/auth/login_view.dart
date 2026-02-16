@@ -16,26 +16,42 @@ class _LoginViewState extends State<LoginView> {
   final LoginController _controller = LoginController();
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
+  bool _isPasswordHidden = true;
 
   void _handleLogin() {
     String user = _userController.text;
     String pass = _passController.text;
 
-    bool isSuccess = _controller.login(user, pass);
+    LoginResult result = _controller.login(user, pass);
 
-    if (isSuccess) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          // Di sini kita kirimkan variabel 'user' ke parameter 'username' di CounterView
-          builder: (context) => CounterView(username: user),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Login Gagal! Gunakan admin/123")),
-      );
+    String message = "";
+
+    switch (result) {
+      case LoginResult.success:
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => CounterView(username: user)),
+        );
+        return;
+
+      case LoginResult.emptyField:
+        message = "Username dan Password tidak boleh kosong!";
+        break;
+
+      case LoginResult.wrongCredential:
+        int sisa = 3 - _controller.failedAttempts;
+        message = "Login gagal! Sisa percobaan: $sisa";
+        break;
+
+      case LoginResult.locked:
+        int detik = _controller.getRemainingSeconds();
+        message = "Terlalu banyak percobaan! Coba lagi dalam $detik detik.";
+        break;
     }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -52,8 +68,20 @@ class _LoginViewState extends State<LoginView> {
             ),
             TextField(
               controller: _passController,
-              obscureText: true, // Menyembunyikan teks password
-              decoration: const InputDecoration(labelText: "Password"),
+              obscureText: _isPasswordHidden, // Menyembunyikan teks password
+              decoration: InputDecoration(
+                labelText: "Password",
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _isPasswordHidden ? Icons.visibility : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _isPasswordHidden = !_isPasswordHidden;
+                    });
+                  },
+                ),
+              ),
             ),
             const SizedBox(height: 20),
             ElevatedButton(onPressed: _handleLogin, child: const Text("Masuk")),

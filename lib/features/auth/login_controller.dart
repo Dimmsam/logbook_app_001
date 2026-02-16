@@ -1,15 +1,56 @@
 // login_controller.dart
 class LoginController {
-  // Database sederhana (Hardcoded)
-  final String _validUsername = "admin";
-  final String _validPassword = "123";
+  final Map<String, String> _users = {
+    'user1': 'password1',
+    'user2': 'password2',
+  };
 
-  // Fungsi pengecekan (Logic-Only)
-  // Fungsi ini mengembalikan true jika cocok, false jika salah.
-  bool login(String username, String password) {
-    if (username == _validUsername && password == _validPassword) {
-      return true;
+  int failedAttempts = 0;
+  bool isLocked = false;
+  DateTime? lockEndTime;
+
+  LoginResult login(String username, String password) {
+    if (username.trim().isEmpty || password.trim().isEmpty) {
+      return LoginResult.emptyField;
     }
-    return false;
+  
+    if (isLocked) {
+      if (DateTime.now().isBefore(lockEndTime!)) {
+        return LoginResult.locked;
+      } else {
+        isLocked = false;
+        failedAttempts = 0;
+      }
+    }
+
+    if (_users.containsKey(username) && _users[username] == password) {
+      failedAttempts = 0;
+      isLocked = false;
+      return LoginResult.success;
+    } else {
+      failedAttempts++;
+
+      if (failedAttempts >= 3) {
+        isLocked = true;
+        lockEndTime = DateTime.now().add(const Duration(seconds: 10));
+        return LoginResult.locked;
+      }
+
+      return LoginResult.wrongCredential;
+    }
   }
+
+  int getRemainingSeconds() {
+    if (!isLocked || lockEndTime == null) return 0;
+
+    int sisa = lockEndTime!.difference(DateTime.now()).inSeconds;
+    return sisa > 0 ? sisa : 0;
+  }
+}
+
+enum LoginResult {
+  success,
+  wrongCredential,
+  emptyField,
+  locked,
 }

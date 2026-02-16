@@ -18,6 +18,14 @@ class _CounterViewState extends State<CounterView> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    _controller.loadData().then((_) {
+      setState(() {});
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -133,14 +141,20 @@ class _CounterViewState extends State<CounterView> {
                 spacing: 12,
                 children: [
                   FloatingActionButton(
-                    onPressed: () => setState(() => _controller.increment()),
+                    onPressed: () async {
+                      await _controller.increment();
+                      setState(() {});
+                    },
                     backgroundColor: Color(0xff8ABB6C),
                     foregroundColor: Colors.white,
                     elevation: 6,
                     child: const Icon(Icons.add),
                   ),
                   FloatingActionButton(
-                    onPressed: () => setState(() => _controller.decrement()),
+                    onPressed: () async {
+                      await _controller.decrement();
+                      setState(() {});
+                    },
                     backgroundColor: Color(0xffFF8989),
                     foregroundColor: Colors.white,
                     elevation: 6,
@@ -236,9 +250,10 @@ class _CounterViewState extends State<CounterView> {
               child: const Text("Batal"),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
-                setState(() => _controller.reset());
+                await _controller.reset();
+                setState(() {});
                 _showSuccessRestart("Berhasil mereset counter!", context);
               },
               child: const Text("Restart", style: TextStyle(color: Colors.red)),
