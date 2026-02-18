@@ -17,9 +17,19 @@ class _CounterViewState extends State<CounterView> {
     text: '1',
   );
 
+String getGreeting() {
+  final hour = DateTime.now().hour;
+
+  if (hour >= 5 && hour < 11) return "Selamat Pagi";
+  if (hour >= 11 && hour < 15) return "Selamat Siang";
+  if (hour >= 15 && hour < 18) return "Selamat Sore";
+  return "Selamat Malam";
+}
+
   @override
   void initState() {
     super.initState();
+    _controller.setUser(widget.username);
     _controller.loadData().then((_) {
       setState(() {});
     });
@@ -94,7 +104,7 @@ class _CounterViewState extends State<CounterView> {
           child: Column(
             children: [
               const SizedBox(height: 40),
-              Text("Selamat Datang, ${widget.username}!"),
+              Text("${getGreeting()}, ${widget.username}!"),
               const SizedBox(height: 30),
               const Text("Total Hitungan Anda:"),
               Text(

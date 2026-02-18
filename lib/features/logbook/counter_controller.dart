@@ -15,6 +15,12 @@ class CounterController {
 
   final List<String> _history = []; // Riwayat perubahan counter
   List<String> get history => _history; // Getter untuk riwayat
+
+  String _username = "default";
+  void setUser(String username) {
+    _username = username;
+  }
+
   void addHistory(String action) {
     final time = DateTime.now();
     if (action == 'mereset') {
@@ -53,7 +59,7 @@ class CounterController {
 
   Future<void> _saveData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('last_counter', _counter);
+    await prefs.setInt('last_counter_$_username', _counter);
     await prefs.setStringList('history', _history);
   }
 
