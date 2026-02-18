@@ -12,15 +12,15 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   final List<Map<String, String>> pages = [
     {
-      "image": "images/onboard1.jpeg",
+      "image": "images/onboard1.gif",
       "text": "Catat setiap hitungan aktivitasmu dengan mudah.",
     },
     {
-      "image": "images/onboard2.jpeg",
+      "image": "images/onboard2.gif",
       "text": "Riwayat aktivitas tersimpan otomatis.",
     },
     {
-      "image": "images/onboard3.jpeg",
+      "image": "images/onboard3.gif",
       "text": "Login dan lanjutkan hitunganmu kapan saja.",
     },
   ];
@@ -41,8 +41,13 @@ class _OnboardingViewState extends State<OnboardingView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Onboarding')),
-      body: Center(
+      appBar: AppBar(title: const Text('Onboarding'),
+          backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+          elevation: 0),
+      body: Container(
+        decoration: BoxDecoration(
+          color: const Color.fromARGB(255, 255, 255, 255),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
