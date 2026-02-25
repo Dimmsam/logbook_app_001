@@ -115,7 +115,12 @@ class _LogViewState extends State<LogView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Logbook")),
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      appBar: AppBar(
+        title: const Text("Logbook"),
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        elevation: 0,
+      ),
       body: ListenableBuilder(
         listenable: Listenable.merge([_controller, _searchController]),
         builder: (context, child) {
@@ -147,7 +152,30 @@ class _LogViewState extends State<LogView> {
               ),
               Expanded(
                 child: currentLogs.isEmpty
-                    ? const Center(child: Text("Belum ada catatan."))
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Image.asset('images/null.gif', width: 220),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Belum ada catatan.',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Cobalah membuat yang baru!',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
                     : ListView.builder(
                         itemCount: currentLogs.length,
                         itemBuilder: (context, index) {
