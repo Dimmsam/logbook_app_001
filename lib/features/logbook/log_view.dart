@@ -24,6 +24,7 @@ class _LogViewState extends State<LogView> {
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   void _showAddLogDialog() {
     showDialog(
@@ -107,6 +108,7 @@ class _LogViewState extends State<LogView> {
     _controller.dispose();
     _titleController.dispose();
     _contentController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -115,56 +117,97 @@ class _LogViewState extends State<LogView> {
     return Scaffold(
       appBar: AppBar(title: const Text("Logbook")),
       body: ListenableBuilder(
-        listenable: _controller,
+        listenable: Listenable.merge([_controller, _searchController]),
         builder: (context, child) {
-          final currentLogs = _controller.logs;
-          if (currentLogs.isEmpty) {
-            return const Center(child: Text("Belum ada catatan."));
-          }
-          return ListView.builder(
-            itemCount: currentLogs.length,
-            itemBuilder: (context, index) {
-              final log = currentLogs[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: ListTile(
-                  leading: const Icon(Icons.note_alt_outlined),
-                  title: Text(
-                    log.title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(log.description),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatTimestamp(log.timestamp),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ),
-                  isThreeLine: true,
-                  // Langkah 5: Edit & Delete
-                  trailing: Wrap(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => _showEditLogDialog(index, log),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () => _controller.removeLog(index),
-                      ),
-                    ],
+          final query = _searchController.text.toLowerCase();
+          final currentLogs = _controller.logs
+              .where((log) => log.title.toLowerCase().contains(query))
+              .toList();
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Cari catatan...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => _searchController.clear(),
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    isDense: true,
                   ),
                 ),
-              );
-            },
+              ),
+              Expanded(
+                child: currentLogs.isEmpty
+                    ? const Center(child: Text("Belum ada catatan."))
+                    : ListView.builder(
+                        itemCount: currentLogs.length,
+                        itemBuilder: (context, index) {
+                          final log = currentLogs[index];
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            child: ListTile(
+                              leading: const Icon(Icons.note_alt_outlined),
+                              title: Text(
+                                log.title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(log.description),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _formatTimestamp(log.timestamp),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey[600],
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              isThreeLine: true,
+                              // Langkah 5: Edit & Delete
+                              trailing: Wrap(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      color: Colors.blue,
+                                    ),
+                                    onPressed: () =>
+                                        _showEditLogDialog(index, log),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                    onPressed: () =>
+                                        _controller.removeLog(index),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
