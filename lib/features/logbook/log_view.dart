@@ -241,84 +241,171 @@ class _LogViewState extends State<LogView> {
                         itemBuilder: (context, index) {
                           final log = currentLogs[index];
                           final accent = _categoryAccent(log.category);
-                          return Card(
-                            color: _categoryColor(log.category),
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
+                          return Dismissible(
+                            key: Key(log.timestamp.toIso8601String()),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              child: const Icon(
+                                Icons.delete,
+                                color: Colors.white,
+                              ),
                             ),
-                            child: ListTile(
-                              leading: Icon(
-                                Icons.note_alt_outlined,
-                                color: accent,
-                              ),
-                              title: Text(
-                                log.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                            confirmDismiss: (direction) async {
+                              return await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Hapus Catatan'),
+                                  content: const Text(
+                                    'Apakah kamu yakin ingin menghapus catatan ini?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text('Batal'),
+                                    ),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: const Text('Hapus'),
+                                    ),
+                                  ],
                                 ),
+                              );
+                            },
+                            onDismissed: (direction) {
+                              _controller.removeLog(index);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Catatan dihapus'),
+                                ),
+                              );
+                            },
+                            child: Card(
+                              color: _categoryColor(log.category),
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
                               ),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(log.description),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 2,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: accent.withOpacity(0.15),
-                                          borderRadius: BorderRadius.circular(
-                                            4,
+                              child: ListTile(
+                                leading: Icon(
+                                  Icons.note_alt_outlined,
+                                  color: accent,
+                                ),
+                                title: Text(
+                                  log.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(log.description),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: accent.withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            log.category,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: accent,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                         ),
-                                        child: Text(
-                                          log.category,
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          _formatTimestamp(log.timestamp),
                                           style: TextStyle(
                                             fontSize: 11,
-                                            color: accent,
-                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey[600],
+                                            fontStyle: FontStyle.italic,
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        _formatTimestamp(log.timestamp),
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.grey[600],
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              isThreeLine: true,
-                              // Langkah 5: Edit & Delete
-                              trailing: Wrap(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.edit,
-                                      color: Colors.blue,
+                                      ],
                                     ),
-                                    onPressed: () =>
-                                        _showEditLogDialog(index, log),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.delete,
-                                      color: Colors.red,
+                                  ],
+                                ),
+                                isThreeLine: true,
+                                // Langkah 5: Edit & Delete
+                                trailing: Wrap(
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
+                                      ),
+                                      onPressed: () =>
+                                          _showEditLogDialog(index, log),
                                     ),
-                                    onPressed: () =>
-                                        _controller.removeLog(index),
-                                  ),
-                                ],
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete,
+                                        color: Colors.red,
+                                      ),
+                                      onPressed: () async {
+                                        final confirm = await showDialog<bool>(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Hapus Catatan'),
+                                            content: const Text(
+                                              'Apakah kamu yakin ingin menghapus catatan ini?',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
+                                                child: const Text('Batal'),
+                                              ),
+                                              ElevatedButton(
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.red,
+                                                  foregroundColor: Colors.white,
+                                                ),
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                                child: const Text('Hapus'),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (confirm == true) {
+                                          _controller.removeLog(index);
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Catatan dihapus'),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );
