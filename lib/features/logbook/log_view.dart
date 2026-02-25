@@ -2,6 +2,32 @@ import 'package:flutter/material.dart';
 import './log_controller.dart';
 import './models/log_model.dart';
 
+const List<String> _categories = ['Pekerjaan', 'Pribadi', 'Urgent'];
+
+Color _categoryColor(String category) {
+  switch (category) {
+    case 'Pekerjaan':
+      return const Color(0xFFE3F2FD);
+    case 'Urgent':
+      return const Color(0xFFFFEBEE);
+    case 'Pribadi':
+    default:
+      return const Color(0xFFE8F5E9);
+  }
+}
+
+Color _categoryAccent(String category) {
+  switch (category) {
+    case 'Pekerjaan':
+      return Colors.blue;
+    case 'Urgent':
+      return Colors.red;
+    case 'Pribadi':
+    default:
+      return Colors.green;
+  }
+}
+
 String _formatTimestamp(DateTime dt) {
   final day = dt.day.toString().padLeft(2, '0');
   final month = dt.month.toString().padLeft(2, '0');
@@ -27,41 +53,58 @@ class _LogViewState extends State<LogView> {
   final TextEditingController _searchController = TextEditingController();
 
   void _showAddLogDialog() {
+    String selectedCategory = _categories[1];
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Tambah Catatan Baru"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: const InputDecoration(hintText: "Judul Catatan"),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text("Tambah Catatan Baru"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(hintText: "Judul Catatan"),
+              ),
+              TextField(
+                controller: _contentController,
+                decoration: const InputDecoration(hintText: "Isi Deskripsi"),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Kategori',
+                  isDense: true,
+                ),
+                items: _categories
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (val) =>
+                    setDialogState(() => selectedCategory = val!),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Batal"),
             ),
-            TextField(
-              controller: _contentController,
-              decoration: const InputDecoration(hintText: "Isi Deskripsi"),
+            ElevatedButton(
+              onPressed: () {
+                _controller.addLog(
+                  _titleController.text,
+                  _contentController.text,
+                  selectedCategory,
+                );
+                _titleController.clear();
+                _contentController.clear();
+                Navigator.pop(context);
+              },
+              child: const Text("Simpan"),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              _controller.addLog(
-                _titleController.text,
-                _contentController.text,
-              );
-              _titleController.clear();
-              _contentController.clear();
-              Navigator.pop(context);
-            },
-            child: const Text("Simpan"),
-          ),
-        ],
       ),
     );
   }
@@ -69,36 +112,53 @@ class _LogViewState extends State<LogView> {
   void _showEditLogDialog(int index, LogModel log) {
     _titleController.text = log.title;
     _contentController.text = log.description;
+    String selectedCategory = log.category;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Edit Catatan"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: _titleController),
-            TextField(controller: _contentController),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text("Edit Catatan"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: _titleController),
+              TextField(controller: _contentController),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Kategori',
+                  isDense: true,
+                ),
+                items: _categories
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (val) =>
+                    setDialogState(() => selectedCategory = val!),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Batal"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _controller.updateLog(
+                  index,
+                  _titleController.text,
+                  _contentController.text,
+                  selectedCategory,
+                );
+                _titleController.clear();
+                _contentController.clear();
+                Navigator.pop(context);
+              },
+              child: const Text("Update"),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              _controller.updateLog(
-                index,
-                _titleController.text,
-                _contentController.text,
-              );
-              _titleController.clear();
-              _contentController.clear();
-              Navigator.pop(context);
-            },
-            child: const Text("Update"),
-          ),
-        ],
       ),
     );
   }
@@ -180,13 +240,18 @@ class _LogViewState extends State<LogView> {
                         itemCount: currentLogs.length,
                         itemBuilder: (context, index) {
                           final log = currentLogs[index];
+                          final accent = _categoryAccent(log.category);
                           return Card(
+                            color: _categoryColor(log.category),
                             margin: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 6,
                             ),
                             child: ListTile(
-                              leading: const Icon(Icons.note_alt_outlined),
+                              leading: Icon(
+                                Icons.note_alt_outlined,
+                                color: accent,
+                              ),
                               title: Text(
                                 log.title,
                                 style: const TextStyle(
@@ -198,13 +263,38 @@ class _LogViewState extends State<LogView> {
                                 children: [
                                   Text(log.description),
                                   const SizedBox(height: 4),
-                                  Text(
-                                    _formatTimestamp(log.timestamp),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey[600],
-                                      fontStyle: FontStyle.italic,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: accent.withOpacity(0.15),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          log.category,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: accent,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _formatTimestamp(log.timestamp),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey[600],
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

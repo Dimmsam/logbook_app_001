@@ -13,19 +13,25 @@ class LogController extends ChangeNotifier {
     loadFromDisk();
   }
 
-  void addLog(String title, String desc) {
+  void addLog(String title, String desc, String category) {
     _logs.add(
-      LogModel(title: title, description: desc, timestamp: DateTime.now()),
+      LogModel(
+        title: title,
+        description: desc,
+        timestamp: DateTime.now(),
+        category: category,
+      ),
     );
     notifyListeners();
     saveToDisk();
   }
 
-  void updateLog(int index, String title, String desc) {
+  void updateLog(int index, String title, String desc, String category) {
     _logs[index] = LogModel(
       title: title,
       description: desc,
       timestamp: DateTime.now(),
+      category: category,
     );
     notifyListeners();
     saveToDisk();

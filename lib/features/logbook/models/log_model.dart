@@ -2,11 +2,13 @@ class LogModel {
   final String title;
   final String description;
   final DateTime timestamp;
+  final String category;
 
   LogModel({
     required this.title,
     required this.description,
     required this.timestamp,
+    this.category = 'Pribadi',
   });
 
   // Untuk Tugas HOTS: Konversi Map (JSON) ke Object
@@ -15,6 +17,7 @@ class LogModel {
       title: map['title'],
       description: map['description'],
       timestamp: DateTime.parse(map['timestamp']),
+      category: map['category'] ?? 'Pribadi',
     );
   }
 
@@ -24,6 +27,7 @@ class LogModel {
       'title': title,
       'description': description,
       'timestamp': timestamp.toIso8601String(),
+      'category': category,
     };
   }
 }
