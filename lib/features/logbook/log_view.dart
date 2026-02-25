@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import './log_controller.dart';
 import './models/log_model.dart';
 
+String _formatTimestamp(DateTime dt) {
+  final day = dt.day.toString().padLeft(2, '0');
+  final month = dt.month.toString().padLeft(2, '0');
+  final year = dt.year;
+  final hour = dt.hour.toString().padLeft(2, '0');
+  final minute = dt.minute.toString().padLeft(2, '0');
+  return '$day/$month/$year $hour:$minute';
+}
+
 class LogView extends StatefulWidget {
   const LogView({super.key});
 
@@ -121,10 +130,29 @@ class _LogViewState extends State<LogView> {
             itemBuilder: (context, index) {
               final log = currentLogs[index];
               return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 child: ListTile(
-                  leading: const Icon(Icons.note),
-                  title: Text(log.title),
-                  subtitle: Text(log.description),
+                  leading: const Icon(Icons.note_alt_outlined),
+                  title: Text(
+                    log.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(log.description),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatTimestamp(log.timestamp),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                  isThreeLine: true,
                   // Langkah 5: Edit & Delete
                   trailing: Wrap(
                     children: [

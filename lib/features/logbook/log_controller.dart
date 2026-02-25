@@ -7,17 +7,27 @@ class LogController {
   final ValueNotifier<List<LogModel>> logsNotifier = ValueNotifier([]);
   static const String _storageKey = 'user_logs_data';
 
-  LogController() { loadFromDisk(); }
+  LogController() {
+    loadFromDisk();
+  }
 
   void addLog(String title, String desc) {
-    final newLog = LogModel(title: title, description: desc, date: DateTime.now().toString());
+    final newLog = LogModel(
+      title: title,
+      description: desc,
+      timestamp: DateTime.now(),
+    );
     logsNotifier.value = [...logsNotifier.value, newLog];
     saveToDisk();
   }
 
   void updateLog(int index, String title, String desc) {
     final currentLogs = List<LogModel>.from(logsNotifier.value);
-    currentLogs[index] = LogModel(title: title, description: desc, date: DateTime.now().toString());
+    currentLogs[index] = LogModel(
+      title: title,
+      description: desc,
+      timestamp: DateTime.now(),
+    );
     logsNotifier.value = currentLogs;
     saveToDisk();
   }
@@ -31,7 +41,9 @@ class LogController {
 
   Future<void> saveToDisk() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encodedData = jsonEncode(logsNotifier.value.map((e) => e.toMap()).toList());
+    final String encodedData = jsonEncode(
+      logsNotifier.value.map((e) => e.toMap()).toList(),
+    );
     await prefs.setString(_storageKey, encodedData);
   }
 
@@ -44,4 +56,3 @@ class LogController {
     }
   }
 }
-
