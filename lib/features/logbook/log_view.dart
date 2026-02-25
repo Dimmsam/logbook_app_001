@@ -19,9 +19,9 @@ class LogView extends StatefulWidget {
 }
 
 class _LogViewState extends State<LogView> {
+  // Langkah 4: Controller untuk menangkap input
   final LogController _controller = LogController();
 
-  // Langkah 4: Controller untuk menangkap input
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
 
@@ -54,11 +54,6 @@ class _LogViewState extends State<LogView> {
                 _titleController.text,
                 _contentController.text,
               );
-
-              // Trigger UI Refresh
-              setState(() {});
-
-              // Bersihkan input dan tutup dialog
               _titleController.clear();
               _contentController.clear();
               Navigator.pop(context);
@@ -109,6 +104,7 @@ class _LogViewState extends State<LogView> {
 
   @override
   void dispose() {
+    _controller.dispose();
     _titleController.dispose();
     _contentController.dispose();
     super.dispose();
@@ -118,10 +114,10 @@ class _LogViewState extends State<LogView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Logbook")),
-      // Langkah 3: Reaktif & Dynamic UI dengan ValueListenableBuilder
-      body: ValueListenableBuilder<List<LogModel>>(
-        valueListenable: _controller.logsNotifier,
-        builder: (context, currentLogs, child) {
+      body: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, child) {
+          final currentLogs = _controller.logs;
           if (currentLogs.isEmpty) {
             return const Center(child: Text("Belum ada catatan."));
           }
@@ -162,9 +158,7 @@ class _LogViewState extends State<LogView> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          setState(() => _controller.removeLog(index));
-                        },
+                        onPressed: () => _controller.removeLog(index),
                       ),
                     ],
                   ),

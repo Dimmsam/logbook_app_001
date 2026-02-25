@@ -1,49 +1,59 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import './models/log_model.dart';
 
-class LogController {
-  final ValueNotifier<List<LogModel>> logsNotifier = ValueNotifier([]);
+class LogController extends ChangeNotifier {
+  final List<LogModel> _logs = [];
   static const String _storageKey = 'user_logs_data';
+
+  List<LogModel> get logs => List.unmodifiable(_logs);
 
   LogController() {
     loadFromDisk();
   }
 
   void addLog(String title, String desc) {
-    final newLog = LogModel(
-      title: title,
-      description: desc,
-      timestamp: DateTime.now(),
+    _logs.add(
+      LogModel(title: title, description: desc, timestamp: DateTime.now()),
     );
-    logsNotifier.value = [...logsNotifier.value, newLog];
+    notifyListeners();
     saveToDisk();
   }
 
   void updateLog(int index, String title, String desc) {
-    final currentLogs = List<LogModel>.from(logsNotifier.value);
-    currentLogs[index] = LogModel(
+    _logs[index] = LogModel(
       title: title,
       description: desc,
       timestamp: DateTime.now(),
     );
-    logsNotifier.value = currentLogs;
+    notifyListeners();
     saveToDisk();
   }
 
   void removeLog(int index) {
-    final currentLogs = List<LogModel>.from(logsNotifier.value);
-    currentLogs.removeAt(index);
-    logsNotifier.value = currentLogs;
+    _logs.removeAt(index);
+    notifyListeners();
     saveToDisk();
+  }
+
+  String encodeToJson(List<LogModel> logs) {
+    final List<Map<String, dynamic>> mapList = logs
+        .map((e) => e.toMap())
+        .toList();
+    return jsonEncode(mapList);
+  }
+
+  List<LogModel> decodeFromJson(String jsonString) {
+    final List decoded = jsonDecode(jsonString);
+    return decoded
+        .map((e) => LogModel.fromMap(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<void> saveToDisk() async {
     final prefs = await SharedPreferences.getInstance();
-    final String encodedData = jsonEncode(
-      logsNotifier.value.map((e) => e.toMap()).toList(),
-    );
+    final String encodedData = encodeToJson(_logs);
     await prefs.setString(_storageKey, encodedData);
   }
 
@@ -51,8 +61,10 @@ class LogController {
     final prefs = await SharedPreferences.getInstance();
     final String? data = prefs.getString(_storageKey);
     if (data != null) {
-      final List decoded = jsonDecode(data);
-      logsNotifier.value = decoded.map((e) => LogModel.fromMap(e)).toList();
+      _logs
+        ..clear()
+        ..addAll(decodeFromJson(data));
+      notifyListeners();
     }
   }
 }
