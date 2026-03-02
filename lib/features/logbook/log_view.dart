@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import './log_controller.dart';
+import 'package:logbook_app_001/services/mongo_service.dart';
 import './models/log_model.dart';
 
 const List<String> _categories = ['Pekerjaan', 'Pribadi', 'Urgent'];
@@ -45,12 +45,28 @@ class LogView extends StatefulWidget {
 }
 
 class _LogViewState extends State<LogView> {
-  // Langkah 4: Controller untuk menangkap input
-  final LogController _controller = LogController();
+  late Future<List<LogModel>> _logsFuture;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _logsFuture = _initAndFetch();
+  }
+
+  Future<List<LogModel>> _initAndFetch() async {
+    await MongoService().connect();
+    return MongoService().getLogs();
+  }
+
+  void _refreshLogs() {
+    setState(() {
+      _logsFuture = MongoService().getLogs();
+    });
+  }
 
   void _showAddLogDialog() {
     String selectedCategory = _categories[1];
@@ -91,15 +107,18 @@ class _LogViewState extends State<LogView> {
               child: const Text("Batal"),
             ),
             ElevatedButton(
-              onPressed: () {
-                _controller.addLog(
-                  _titleController.text,
-                  _contentController.text,
-                  selectedCategory,
+              onPressed: () async {
+                final newLog = LogModel(
+                  title: _titleController.text,
+                  description: _contentController.text,
+                  timestamp: DateTime.now(),
+                  category: selectedCategory,
                 );
                 _titleController.clear();
                 _contentController.clear();
                 Navigator.pop(context);
+                await MongoService().insertLog(newLog);
+                _refreshLogs();
               },
               child: const Text("Simpan"),
             ),
@@ -109,7 +128,7 @@ class _LogViewState extends State<LogView> {
     );
   }
 
-  void _showEditLogDialog(int index, LogModel log) {
+  void _showEditLogDialog(LogModel log) {
     _titleController.text = log.title;
     _contentController.text = log.description;
     String selectedCategory = log.category;
@@ -144,16 +163,19 @@ class _LogViewState extends State<LogView> {
               child: const Text("Batal"),
             ),
             ElevatedButton(
-              onPressed: () {
-                _controller.updateLog(
-                  index,
-                  _titleController.text,
-                  _contentController.text,
-                  selectedCategory,
+              onPressed: () async {
+                final updated = LogModel(
+                  id: log.id,
+                  title: _titleController.text,
+                  description: _contentController.text,
+                  timestamp: DateTime.now(),
+                  category: selectedCategory,
                 );
                 _titleController.clear();
                 _contentController.clear();
                 Navigator.pop(context);
+                await MongoService().updateLog(updated);
+                _refreshLogs();
               },
               child: const Text("Update"),
             ),
@@ -165,7 +187,6 @@ class _LogViewState extends State<LogView> {
 
   @override
   void dispose() {
-    _controller.dispose();
     _titleController.dispose();
     _contentController.dispose();
     _searchController.dispose();
@@ -181,238 +202,299 @@ class _LogViewState extends State<LogView> {
         backgroundColor: const Color.fromARGB(255, 255, 255, 255),
         elevation: 0,
       ),
-      body: ListenableBuilder(
-        listenable: Listenable.merge([_controller, _searchController]),
-        builder: (context, child) {
-          final query = _searchController.text.toLowerCase();
-          final currentLogs = _controller.logs
-              .where((log) => log.title.toLowerCase().contains(query))
-              .toList();
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Cari catatan...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () => _searchController.clear(),
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    isDense: true,
+      body: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: _searchController,
+        builder: (context, searchValue, child) {
+          return FutureBuilder<List<LogModel>>(
+            future: _logsFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('Mengambil data dari Cloud...'),
+                    ],
                   ),
-                ),
-              ),
-              Expanded(
-                child: currentLogs.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset('images/null.gif', width: 220),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Belum ada catatan.',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              'Cobalah membuat yang baru!',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
+                );
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cloud_off, size: 64, color: Colors.red),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Gagal memuat data:\n${snapshot.error}',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: _refreshLogs,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Coba Lagi'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              final query = searchValue.text.toLowerCase();
+              final currentLogs = (snapshot.data ?? [])
+                  .where((log) => log.title.toLowerCase().contains(query))
+                  .toList();
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Cari catatan...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () => _searchController.clear(),
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: currentLogs.length,
-                        itemBuilder: (context, index) {
-                          final log = currentLogs[index];
-                          final accent = _categoryAccent(log.category);
-                          return Dismissible(
-                            key: Key(log.timestamp.toIso8601String()),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              color: Colors.red,
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              child: const Icon(
-                                Icons.delete,
-                                color: Colors.white,
-                              ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: currentLogs.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Image.asset('images/null.gif', width: 220),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Belum ada catatan.',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Cobalah membuat yang baru!',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
                             ),
-                            confirmDismiss: (direction) async {
-                              return await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Hapus Catatan'),
-                                  content: const Text(
-                                    'Apakah kamu yakin ingin menghapus catatan ini?',
+                          )
+                        : ListView.builder(
+                            itemCount: currentLogs.length,
+                            itemBuilder: (context, index) {
+                              final log = currentLogs[index];
+                              final accent = _categoryAccent(log.category);
+                              return Dismissible(
+                                // ignore: deprecated_member_use
+                                key: Key(log.timestamp.toIso8601String()),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  color: Colors.red,
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.only(right: 20),
+                                  child: const Icon(
+                                    Icons.delete,
+                                    color: Colors.white,
                                   ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('Batal'),
-                                    ),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
+                                ),
+                                confirmDismiss: (direction) async {
+                                  return await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('Hapus Catatan'),
+                                      content: const Text(
+                                        'Apakah kamu yakin ingin menghapus catatan ini?',
                                       ),
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: const Text('Hapus'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            onDismissed: (direction) {
-                              _controller.removeLog(index);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Catatan dihapus'),
-                                ),
-                              );
-                            },
-                            child: Card(
-                              color: _categoryColor(log.category),
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              child: ListTile(
-                                leading: Icon(
-                                  Icons.note_alt_outlined,
-                                  color: accent,
-                                ),
-                                title: Text(
-                                  log.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(log.description),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: accent.withOpacity(0.15),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            log.category,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: accent,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context, false),
+                                          child: const Text('Batal'),
                                         ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          _formatTimestamp(log.timestamp),
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey[600],
-                                            fontStyle: FontStyle.italic,
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                            foregroundColor: Colors.white,
                                           ),
+                                          onPressed: () =>
+                                              Navigator.pop(context, true),
+                                          child: const Text('Hapus'),
                                         ),
                                       ],
                                     ),
-                                  ],
-                                ),
-                                isThreeLine: true,
-                                // Langkah 5: Edit & Delete
-                                trailing: Wrap(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.edit,
-                                        color: Colors.blue,
-                                      ),
-                                      onPressed: () =>
-                                          _showEditLogDialog(index, log),
+                                  );
+                                },
+                                onDismissed: (direction) {
+                                  if (log.id != null) {
+                                    MongoService()
+                                        .deleteLog(log.id!)
+                                        .then((_) => _refreshLogs());
+                                  }
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Catatan dihapus'),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
+                                  );
+                                },
+                                child: Card(
+                                  color: _categoryColor(log.category),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  child: ListTile(
+                                    leading: Icon(
+                                      Icons.note_alt_outlined,
+                                      color: accent,
+                                    ),
+                                    title: Text(
+                                      log.title,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                      onPressed: () async {
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: const Text('Hapus Catatan'),
-                                            content: const Text(
-                                              'Apakah kamu yakin ingin menghapus catatan ini?',
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(log.description),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: accent.withOpacity(0.15),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                log.category,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: accent,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
                                             ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  false,
-                                                ),
-                                                child: const Text('Batal'),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              _formatTimestamp(log.timestamp),
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey[600],
+                                                fontStyle: FontStyle.italic,
                                               ),
-                                              ElevatedButton(
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.red,
-                                                  foregroundColor: Colors.white,
-                                                ),
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  true,
-                                                ),
-                                                child: const Text('Hapus'),
-                                              ),
-                                            ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    isThreeLine: true,
+                                    // Langkah 5: Edit & Delete
+                                    trailing: Wrap(
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit,
+                                            color: Colors.blue,
                                           ),
-                                        );
-                                        if (confirm == true) {
-                                          _controller.removeLog(index);
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Catatan dihapus'),
-                                            ),
-                                          );
-                                        }
-                                      },
+                                          onPressed: () =>
+                                              _showEditLogDialog(log),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete,
+                                            color: Colors.red,
+                                          ),
+                                          onPressed: () async {
+                                            final confirm = await showDialog<bool>(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                title: const Text(
+                                                  'Hapus Catatan',
+                                                ),
+                                                content: const Text(
+                                                  'Apakah kamu yakin ingin menghapus catatan ini?',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          context,
+                                                          false,
+                                                        ),
+                                                    child: const Text('Batal'),
+                                                  ),
+                                                  ElevatedButton(
+                                                    style:
+                                                        ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              Colors.red,
+                                                          foregroundColor:
+                                                              Colors.white,
+                                                        ),
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                          context,
+                                                          true,
+                                                        ),
+                                                    child: const Text('Hapus'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            if (confirm == true) {
+                                              if (log.id != null) {
+                                                await MongoService().deleteLog(
+                                                  log.id!,
+                                                );
+                                              }
+                                              _refreshLogs();
+                                              if (context.mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Catatan dihapus',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          },
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
