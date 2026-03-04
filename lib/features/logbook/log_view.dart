@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:logbook_app_001/services/mongo_service.dart';
 import './models/log_model.dart';
 
@@ -28,13 +29,14 @@ Color _categoryAccent(String category) {
   }
 }
 
-String _formatTimestamp(DateTime dt) {
-  final day = dt.day.toString().padLeft(2, '0');
-  final month = dt.month.toString().padLeft(2, '0');
-  final year = dt.year;
-  final hour = dt.hour.toString().padLeft(2, '0');
-  final minute = dt.minute.toString().padLeft(2, '0');
-  return '$day/$month/$year $hour:$minute';
+String _formatRelative(DateTime dt) {
+  final now = DateTime.now();
+  final diff = now.difference(dt);
+  if (diff.inSeconds < 60) return 'Baru saja';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} menit yang lalu';
+  if (diff.inHours < 24) return '${diff.inHours} jam yang lalu';
+  if (diff.inDays < 7) return '${diff.inDays} hari yang lalu';
+  return DateFormat('d MMM yyyy', 'id').format(dt);
 }
 
 class LogView extends StatefulWidget {
@@ -58,8 +60,25 @@ class _LogViewState extends State<LogView> {
   }
 
   Future<List<LogModel>> _initAndFetch() async {
-    await MongoService().connect();
-    return MongoService().getLogs();
+    try {
+      await MongoService().connect();
+      return await MongoService().getLogs();
+    } catch (e) {
+      final msg = e.toString().toLowerCase();
+      final isOffline =
+          msg.contains('socket') ||
+          msg.contains('timeout') ||
+          msg.contains('network') ||
+          msg.contains('connection') ||
+          msg.contains('unreachable') ||
+          msg.contains('failed host lookup');
+      if (isOffline) {
+        throw Exception(
+          'OFFLINE: Tidak ada koneksi internet. Periksa sinyal atau Wi-Fi Anda.',
+        );
+      }
+      rethrow;
+    }
   }
 
   void _refreshLogs() {
@@ -221,23 +240,50 @@ class _LogViewState extends State<LogView> {
                 );
               }
               if (snapshot.hasError) {
+                final isOffline =
+                    snapshot.error.toString().contains('OFFLINE') ||
+                    snapshot.error.toString().toLowerCase().contains('timeout');
                 return Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.cloud_off, size: 64, color: Colors.red),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Gagal memuat data:\n${snapshot.error}',
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                      ElevatedButton.icon(
-                        onPressed: _refreshLogs,
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Coba Lagi'),
-                      ),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isOffline ? Icons.wifi_off : Icons.cloud_off,
+                          size: 72,
+                          color: isOffline ? Colors.orange : Colors.red,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          isOffline ? ' Offline Mode' : 'Gagal Memuat Data',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isOffline
+                              ? 'Tidak ada koneksi internet.\nPeriksa sinyal atau Wi-Fi Anda, lalu coba lagi.'
+                              : snapshot.error.toString().replaceFirst(
+                                  'Exception: ',
+                                  '',
+                                ),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: _refreshLogs,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Coba Lagi'),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               }
@@ -294,202 +340,210 @@ class _LogViewState extends State<LogView> {
                               ],
                             ),
                           )
-                        : ListView.builder(
-                            itemCount: currentLogs.length,
-                            itemBuilder: (context, index) {
-                              final log = currentLogs[index];
-                              final accent = _categoryAccent(log.category);
-                              return Dismissible(
-                                // ignore: deprecated_member_use
-                                key: Key(log.timestamp.toIso8601String()),
-                                direction: DismissDirection.endToStart,
-                                background: Container(
-                                  color: Colors.red,
-                                  alignment: Alignment.centerRight,
-                                  padding: const EdgeInsets.only(right: 20),
-                                  child: const Icon(
-                                    Icons.delete,
-                                    color: Colors.white,
+                        : RefreshIndicator(
+                            onRefresh: () async => _refreshLogs(),
+                            child: ListView.builder(
+                              itemCount: currentLogs.length,
+                              itemBuilder: (context, index) {
+                                final log = currentLogs[index];
+                                final accent = _categoryAccent(log.category);
+                                return Dismissible(
+                                  // ignore: deprecated_member_use
+                                  key: Key(log.timestamp.toIso8601String()),
+                                  direction: DismissDirection.endToStart,
+                                  background: Container(
+                                    color: Colors.red,
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.only(right: 20),
+                                    child: const Icon(
+                                      Icons.delete,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
-                                confirmDismiss: (direction) async {
-                                  return await showDialog<bool>(
-                                    context: context,
-                                    builder: (context) => AlertDialog(
-                                      title: const Text('Hapus Catatan'),
-                                      content: const Text(
-                                        'Apakah kamu yakin ingin menghapus catatan ini?',
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, false),
-                                          child: const Text('Batal'),
+                                  confirmDismiss: (direction) async {
+                                    return await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Hapus Catatan'),
+                                        content: const Text(
+                                          'Apakah kamu yakin ingin menghapus catatan ini?',
                                         ),
-                                        ElevatedButton(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.red,
-                                            foregroundColor: Colors.white,
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: const Text('Batal'),
                                           ),
-                                          onPressed: () =>
-                                              Navigator.pop(context, true),
-                                          child: const Text('Hapus'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                                onDismissed: (direction) {
-                                  if (log.id != null) {
-                                    MongoService()
-                                        .deleteLog(log.id!)
-                                        .then((_) => _refreshLogs());
-                                  }
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Catatan dihapus'),
-                                    ),
-                                  );
-                                },
-                                child: Card(
-                                  color: _categoryColor(log.category),
-                                  margin: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  child: ListTile(
-                                    leading: Icon(
-                                      Icons.note_alt_outlined,
-                                      color: accent,
-                                    ),
-                                    title: Text(
-                                      log.title,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
+                                          ElevatedButton(
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                              foregroundColor: Colors.white,
+                                            ),
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: const Text('Hapus'),
+                                          ),
+                                        ],
                                       ),
+                                    );
+                                  },
+                                  onDismissed: (direction) {
+                                    if (log.id != null) {
+                                      MongoService()
+                                          .deleteLog(log.id!)
+                                          .then((_) => _refreshLogs());
+                                    }
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Catatan dihapus'),
+                                      ),
+                                    );
+                                  },
+                                  child: Card(
+                                    color: _categoryColor(log.category),
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
                                     ),
-                                    subtitle: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(log.description),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 6,
-                                                    vertical: 2,
+                                    child: ListTile(
+                                      leading: Icon(
+                                        Icons.note_alt_outlined,
+                                        color: accent,
+                                      ),
+                                      title: Text(
+                                        log.title,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(log.description),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: accent.withOpacity(
+                                                    0.15,
                                                   ),
-                                              decoration: BoxDecoration(
-                                                color: accent.withOpacity(0.15),
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  log.category,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: accent,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
                                               ),
-                                              child: Text(
-                                                log.category,
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                _formatRelative(log.timestamp),
                                                 style: TextStyle(
                                                   fontSize: 11,
-                                                  color: accent,
-                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.grey[600],
+                                                  fontStyle: FontStyle.italic,
                                                 ),
                                               ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              _formatTimestamp(log.timestamp),
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.grey[600],
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    isThreeLine: true,
-                                    // Langkah 5: Edit & Delete
-                                    trailing: Wrap(
-                                      children: [
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.edit,
-                                            color: Colors.blue,
+                                            ],
                                           ),
-                                          onPressed: () =>
-                                              _showEditLogDialog(log),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete,
-                                            color: Colors.red,
+                                        ],
+                                      ),
+                                      isThreeLine: true,
+                                      // Langkah 5: Edit & Delete
+                                      trailing: Wrap(
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.edit,
+                                              color: Colors.blue,
+                                            ),
+                                            onPressed: () =>
+                                                _showEditLogDialog(log),
                                           ),
-                                          onPressed: () async {
-                                            final confirm = await showDialog<bool>(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text(
-                                                  'Hapus Catatan',
-                                                ),
-                                                content: const Text(
-                                                  'Apakah kamu yakin ingin menghapus catatan ini?',
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                          context,
-                                                          false,
-                                                        ),
-                                                    child: const Text('Batal'),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete,
+                                              color: Colors.red,
+                                            ),
+                                            onPressed: () async {
+                                              final confirm = await showDialog<bool>(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text(
+                                                    'Hapus Catatan',
                                                   ),
-                                                  ElevatedButton(
-                                                    style:
-                                                        ElevatedButton.styleFrom(
-                                                          backgroundColor:
-                                                              Colors.red,
-                                                          foregroundColor:
-                                                              Colors.white,
-                                                        ),
-                                                    onPressed: () =>
-                                                        Navigator.pop(
-                                                          context,
-                                                          true,
-                                                        ),
-                                                    child: const Text('Hapus'),
+                                                  content: const Text(
+                                                    'Apakah kamu yakin ingin menghapus catatan ini?',
                                                   ),
-                                                ],
-                                              ),
-                                            );
-                                            if (confirm == true) {
-                                              if (log.id != null) {
-                                                await MongoService().deleteLog(
-                                                  log.id!,
-                                                );
-                                              }
-                                              _refreshLogs();
-                                              if (context.mounted) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'Catatan dihapus',
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                            false,
+                                                          ),
+                                                      child: const Text(
+                                                        'Batal',
+                                                      ),
                                                     ),
-                                                  ),
-                                                );
+                                                    ElevatedButton(
+                                                      style:
+                                                          ElevatedButton.styleFrom(
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                            foregroundColor:
+                                                                Colors.white,
+                                                          ),
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                            true,
+                                                          ),
+                                                      child: const Text(
+                                                        'Hapus',
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                              if (confirm == true) {
+                                                if (log.id != null) {
+                                                  await MongoService()
+                                                      .deleteLog(log.id!);
+                                                }
+                                                _refreshLogs();
+                                                if (context.mounted) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Catatan dihapus',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
                                               }
-                                            }
-                                          },
-                                        ),
-                                      ],
+                                            },
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
+                                );
+                              },
+                            ),
                           ),
                   ),
                 ],
