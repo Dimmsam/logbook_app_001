@@ -1,42 +1,54 @@
-import 'package:mongo_dart/mongo_dart.dart';
+import 'package:hive/hive.dart';
+import 'package:mongo_dart/mongo_dart.dart' show ObjectId;
 
+part 'log_model.g.dart';
+
+@HiveType(typeId: 0)
 class LogModel {
-  final ObjectId? id; // Penanda unik global dari MongoDB
+  @HiveField(0)
+  final String? id;
+
+  @HiveField(1)
   final String title;
+
+  @HiveField(2)
   final String description;
-  final DateTime timestamp;
-  final String category;
+
+  @HiveField(3)
+  final String date;
+
+  @HiveField(4)
+  final String authorId;
+
+  @HiveField(5)
+  final String teamId;
 
   LogModel({
     this.id,
     required this.title,
     required this.description,
-    required this.timestamp,
-    this.category = 'Pribadi',
+    required this.date,
+    required this.authorId,
+    required this.teamId,
   });
 
-  // [CONVERT] Memasukkan data ke "Kardus" (BSON/Map) untuk dikirim ke Cloud
-  Map<String, dynamic> toMap() {
-    return {
-      '_id': id ?? ObjectId(), // Buat ID otomatis jika belum ada
-      'title': title,
-      'description': description,
-      'timestamp': timestamp
-          .toIso8601String(), // Simpan tanggal dalam format standar
-      'category': category,
-    };
-  }
+  Map<String, dynamic> toMap() => {
+    '_id': id != null ? ObjectId.fromHexString(id!) : ObjectId(),
+    'title': title,
+    'description': description,
+    'date': date,
+    'authorId': authorId,
+    'teamId': teamId,
+  };
 
-  // [REVERT] Membongkar "Kardus" (BSON/Map) kembali menjadi objek Flutter
   factory LogModel.fromMap(Map<String, dynamic> map) {
     return LogModel(
-      id: map['_id'] as ObjectId?,
+      id: (map['_id'] as ObjectId?)?.oid,
       title: map['title'] ?? '',
       description: map['description'] ?? '',
-      timestamp: map['timestamp'] != null
-          ? DateTime.parse(map['timestamp'])
-          : DateTime.now(),
-      category: map['category'] ?? 'Pribadi',
+      date: map['date'] ?? '',
+      authorId: map['authorId'] ?? 'unknown_user',
+      teamId: map['teamId'] ?? 'no_team',
     );
   }
 }

@@ -5,6 +5,33 @@ class LoginController {
     'user2': 'password2',
   };
 
+  static const Map<String, Map<String, dynamic>> _userProfiles = {
+    'user1': {
+      'uid': 'user1',
+      'username': 'User Satu',
+      'role': 'Ketua',
+      'teamId': 'team_001',
+    },
+    'user2': {
+      'uid': 'user2',
+      'username': 'User Dua',
+      'role': 'Anggota',
+      'teamId': 'team_001',
+    },
+  };
+
+  Map<String, dynamic> getProfile(String username) {
+    return Map<String, dynamic>.from(
+      _userProfiles[username] ??
+          {
+            'uid': username,
+            'username': username,
+            'role': 'Anggota',
+            'teamId': 'team_001',
+          },
+    );
+  }
+
   int failedAttempts = 0;
   bool isLocked = false;
   DateTime? lockEndTime;
@@ -13,7 +40,7 @@ class LoginController {
     if (username.trim().isEmpty || password.trim().isEmpty) {
       return LoginResult.emptyField;
     }
-  
+
     if (isLocked) {
       if (DateTime.now().isBefore(lockEndTime!)) {
         return LoginResult.locked;
@@ -48,9 +75,4 @@ class LoginController {
   }
 }
 
-enum LoginResult {
-  success,
-  wrongCredential,
-  emptyField,
-  locked,
-}
+enum LoginResult { success, wrongCredential, emptyField, locked }

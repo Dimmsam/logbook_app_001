@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:logbook_app_001/features/logbook/models/log_model.dart';
 import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
 import 'package:logbook_app_001/services/mongo_service.dart';
 
@@ -11,6 +13,10 @@ void main() async {
   await dotenv.load(fileName: ".env");
   // Inisialisasi locale Indonesia untuk library intl
   await initializeDateFormatting('id', null);
+  await Hive.initFlutter();
+  Hive.registerAdapter(LogModelAdapter());
+  await Hive.openBox<LogModel>('offline_logs');
+  await Hive.openBox<LogModel>('pending_sync');
   // Jabat tangan dengan MongoDB Atlas
   await MongoService().connect();
   runApp(const MyApp());

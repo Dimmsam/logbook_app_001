@@ -1,560 +1,169 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:logbook_app_001/services/mongo_service.dart';
+import 'package:logbook_app_001/features/auth/login_view.dart';
+import 'package:logbook_app_001/features/logbook/log_controller.dart';
+import 'package:logbook_app_001/features/logbook/log_editor_page.dart';
+import 'package:logbook_app_001/services/access_policy.dart';
 import './models/log_model.dart';
 
-const List<String> _categories = ['Pekerjaan', 'Pribadi', 'Urgent'];
-
-Color _categoryColor(String category) {
-  switch (category) {
-    case 'Pekerjaan':
-      return const Color(0xFFE3F2FD);
-    case 'Urgent':
-      return const Color(0xFFFFEBEE);
-    case 'Pribadi':
-    default:
-      return const Color(0xFFE8F5E9);
-  }
-}
-
-Color _categoryAccent(String category) {
-  switch (category) {
-    case 'Pekerjaan':
-      return Colors.blue;
-    case 'Urgent':
-      return Colors.red;
-    case 'Pribadi':
-    default:
-      return Colors.green;
-  }
-}
-
-String _formatRelative(DateTime dt) {
-  final now = DateTime.now();
-  final diff = now.difference(dt);
-  if (diff.inSeconds < 60) return 'Baru saja';
-  if (diff.inMinutes < 60) return '${diff.inMinutes} menit yang lalu';
-  if (diff.inHours < 24) return '${diff.inHours} jam yang lalu';
-  if (diff.inDays < 7) return '${diff.inDays} hari yang lalu';
-  return DateFormat('d MMM yyyy', 'id').format(dt);
-}
-
 class LogView extends StatefulWidget {
-  const LogView({super.key});
+  final dynamic currentUser;
+
+  const LogView({super.key, required this.currentUser});
 
   @override
   State<LogView> createState() => _LogViewState();
 }
 
 class _LogViewState extends State<LogView> {
-  late Future<List<LogModel>> _logsFuture;
-
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _contentController = TextEditingController();
-  final TextEditingController _searchController = TextEditingController();
+  late final LogController _controller;
 
   @override
   void initState() {
     super.initState();
-    _logsFuture = _initAndFetch();
+    _controller = LogController(
+      userId: widget.currentUser['uid'],
+      userRole: widget.currentUser['role'],
+    );
+    _controller.loadLogs(widget.currentUser['teamId']);
   }
 
-  Future<List<LogModel>> _initAndFetch() async {
-    try {
-      await MongoService().connect();
-      return await MongoService().getLogs();
-    } catch (e) {
-      final msg = e.toString().toLowerCase();
-      final isOffline =
-          msg.contains('socket') ||
-          msg.contains('timeout') ||
-          msg.contains('network') ||
-          msg.contains('connection') ||
-          msg.contains('unreachable') ||
-          msg.contains('failed host lookup');
-      if (isOffline) {
-        throw Exception(
-          'OFFLINE: Tidak ada koneksi internet. Periksa sinyal atau Wi-Fi Anda.',
-        );
-      }
-      rethrow;
-    }
-  }
-
-  void _refreshLogs() {
-    setState(() {
-      _logsFuture = MongoService().getLogs();
-    });
-  }
-
-  void _showAddLogDialog() {
-    String selectedCategory = _categories[1];
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text("Tambah Catatan Baru"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(hintText: "Judul Catatan"),
-              ),
-              TextField(
-                controller: _contentController,
-                decoration: const InputDecoration(hintText: "Isi Deskripsi"),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Kategori',
-                  isDense: true,
-                ),
-                items: _categories
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (val) =>
-                    setDialogState(() => selectedCategory = val!),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final newLog = LogModel(
-                  title: _titleController.text,
-                  description: _contentController.text,
-                  timestamp: DateTime.now(),
-                  category: selectedCategory,
-                );
-                _titleController.clear();
-                _contentController.clear();
-                Navigator.pop(context);
-                await MongoService().insertLog(newLog);
-                _refreshLogs();
-              },
-              child: const Text("Simpan"),
-            ),
-          ],
+  void _goToEditor({LogModel? log, int? index}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LogEditorPage(
+          log: log,
+          index: index,
+          controller: _controller,
+          currentUser: widget.currentUser,
         ),
       ),
     );
-  }
-
-  void _showEditLogDialog(LogModel log) {
-    _titleController.text = log.title;
-    _contentController.text = log.description;
-    String selectedCategory = log.category;
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text("Edit Catatan"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: _titleController),
-              TextField(controller: _contentController),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Kategori',
-                  isDense: true,
-                ),
-                items: _categories
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (val) =>
-                    setDialogState(() => selectedCategory = val!),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final updated = LogModel(
-                  id: log.id,
-                  title: _titleController.text,
-                  description: _contentController.text,
-                  timestamp: DateTime.now(),
-                  category: selectedCategory,
-                );
-                _titleController.clear();
-                _contentController.clear();
-                Navigator.pop(context);
-                await MongoService().updateLog(updated);
-                _refreshLogs();
-              },
-              child: const Text("Update"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _contentController.dispose();
-    _searchController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       appBar: AppBar(
-        title: const Text("Logbook"),
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-        elevation: 0,
-      ),
-      body: ValueListenableBuilder<TextEditingValue>(
-        valueListenable: _searchController,
-        builder: (context, searchValue, child) {
-          return FutureBuilder<List<LogModel>>(
-            future: _logsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 16),
-                      Text('Mengambil data dari Cloud...'),
-                    ],
-                  ),
-                );
-              }
-              if (snapshot.hasError) {
-                final isOffline =
-                    snapshot.error.toString().contains('OFFLINE') ||
-                    snapshot.error.toString().toLowerCase().contains('timeout');
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          isOffline ? Icons.wifi_off : Icons.cloud_off,
-                          size: 72,
-                          color: isOffline ? Colors.orange : Colors.red,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          isOffline ? ' Offline Mode' : 'Gagal Memuat Data',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          isOffline
-                              ? 'Tidak ada koneksi internet.\nPeriksa sinyal atau Wi-Fi Anda, lalu coba lagi.'
-                              : snapshot.error.toString().replaceFirst(
-                                  'Exception: ',
-                                  '',
-                                ),
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton.icon(
-                          onPressed: _refreshLogs,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Coba Lagi'),
-                        ),
-                      ],
+        title: Text("Logbook: ${widget.currentUser['username']}"),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _controller.loadLogs(widget.currentUser['teamId']),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text("Konfirmasi Logout"),
+                  content: const Text("Apakah Anda yakin ingin keluar?"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Batal"),
                     ),
-                  ),
-                );
-              }
-
-              final query = searchValue.text.toLowerCase();
-              final currentLogs = (snapshot.data ?? [])
-                  .where((log) => log.title.toLowerCase().contains(query))
-                  .toList();
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Cari catatan...',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () => _searchController.clear(),
-                              )
-                            : null,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        isDense: true,
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginView(),
+                          ),
+                          (route) => false,
+                        );
+                      },
+                      child: const Text(
+                        "Ya, Keluar",
+                        style: TextStyle(color: Colors.red),
                       ),
                     ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: ValueListenableBuilder<List<LogModel>>(
+        valueListenable: _controller.logsNotifier,
+        builder: (context, currentLogs, child) {
+          if (currentLogs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.note_alt_outlined,
+                    size: 64,
+                    color: Colors.grey,
                   ),
-                  Expanded(
-                    child: currentLogs.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Image.asset('images/null.gif', width: 220),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  'Belum ada catatan.',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Cobalah membuat yang baru!',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: () async => _refreshLogs(),
-                            child: ListView.builder(
-                              itemCount: currentLogs.length,
-                              itemBuilder: (context, index) {
-                                final log = currentLogs[index];
-                                final accent = _categoryAccent(log.category);
-                                return Dismissible(
-                                  // ignore: deprecated_member_use
-                                  key: Key(log.timestamp.toIso8601String()),
-                                  direction: DismissDirection.endToStart,
-                                  background: Container(
-                                    color: Colors.red,
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.only(right: 20),
-                                    child: const Icon(
-                                      Icons.delete,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  confirmDismiss: (direction) async {
-                                    return await showDialog<bool>(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: const Text('Hapus Catatan'),
-                                        content: const Text(
-                                          'Apakah kamu yakin ingin menghapus catatan ini?',
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context, false),
-                                            child: const Text('Batal'),
-                                          ),
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.red,
-                                              foregroundColor: Colors.white,
-                                            ),
-                                            onPressed: () =>
-                                                Navigator.pop(context, true),
-                                            child: const Text('Hapus'),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  onDismissed: (direction) {
-                                    if (log.id != null) {
-                                      MongoService()
-                                          .deleteLog(log.id!)
-                                          .then((_) => _refreshLogs());
-                                    }
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Catatan dihapus'),
-                                      ),
-                                    );
-                                  },
-                                  child: Card(
-                                    color: _categoryColor(log.category),
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    child: ListTile(
-                                      leading: Icon(
-                                        Icons.note_alt_outlined,
-                                        color: accent,
-                                      ),
-                                      title: Text(
-                                        log.title,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(log.description),
-                                          const SizedBox(height: 4),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: accent.withOpacity(
-                                                    0.15,
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  log.category,
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: accent,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                _formatRelative(log.timestamp),
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  color: Colors.grey[600],
-                                                  fontStyle: FontStyle.italic,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      isThreeLine: true,
-                                      // Langkah 5: Edit & Delete
-                                      trailing: Wrap(
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.edit,
-                                              color: Colors.blue,
-                                            ),
-                                            onPressed: () =>
-                                                _showEditLogDialog(log),
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete,
-                                              color: Colors.red,
-                                            ),
-                                            onPressed: () async {
-                                              final confirm = await showDialog<bool>(
-                                                context: context,
-                                                builder: (context) => AlertDialog(
-                                                  title: const Text(
-                                                    'Hapus Catatan',
-                                                  ),
-                                                  content: const Text(
-                                                    'Apakah kamu yakin ingin menghapus catatan ini?',
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            context,
-                                                            false,
-                                                          ),
-                                                      child: const Text(
-                                                        'Batal',
-                                                      ),
-                                                    ),
-                                                    ElevatedButton(
-                                                      style:
-                                                          ElevatedButton.styleFrom(
-                                                            backgroundColor:
-                                                                Colors.red,
-                                                            foregroundColor:
-                                                                Colors.white,
-                                                          ),
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            context,
-                                                            true,
-                                                          ),
-                                                      child: const Text(
-                                                        'Hapus',
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                              if (confirm == true) {
-                                                if (log.id != null) {
-                                                  await MongoService()
-                                                      .deleteLog(log.id!);
-                                                }
-                                                _refreshLogs();
-                                                if (context.mounted) {
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    const SnackBar(
-                                                      content: Text(
-                                                        'Catatan dihapus',
-                                                      ),
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
+                  const SizedBox(height: 16),
+                  const Text("Belum ada catatan."),
+                  ElevatedButton(
+                    onPressed: () => _goToEditor(),
+                    child: const Text("Buat Catatan Pertama"),
                   ),
                 ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: currentLogs.length,
+            itemBuilder: (context, index) {
+              final log = currentLogs[index];
+              final bool isOwner = log.authorId == widget.currentUser['uid'];
+
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: ListTile(
+                  leading: Icon(
+                    log.id != null
+                        ? Icons.cloud_done
+                        : Icons.cloud_upload_outlined,
+                    color: log.id != null ? Colors.green : Colors.orange,
+                  ),
+                  title: Text(log.title),
+                  subtitle: Text(
+                    log.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (AccessPolicy.canPerform(
+                        widget.currentUser['role'],
+                        AccessPolicy.update,
+                        isOwner: isOwner,
+                      ))
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _goToEditor(log: log, index: index),
+                        ),
+                      if (AccessPolicy.canPerform(
+                        widget.currentUser['role'],
+                        AccessPolicy.delete,
+                        isOwner: isOwner,
+                      ))
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _controller.removeLog(index),
+                        ),
+                    ],
+                  ),
+                ),
               );
             },
           );
         },
       ),
-      // Langkah 4: FloatingActionButton memanggil dialog tambah
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddLogDialog,
+        onPressed: () => _goToEditor(),
         child: const Icon(Icons.add),
       ),
     );

@@ -28,9 +28,12 @@ class _LoginViewState extends State<LoginView> {
 
     switch (result) {
       case LoginResult.success:
+        final userProfile = _controller.getProfile(user);
         Navigator.pushReplacement(
           context,
-            MaterialPageRoute(builder: (context) => const LogView()),
+          MaterialPageRoute(
+            builder: (context) => LogView(currentUser: userProfile),
+          ),
         );
         return;
 
