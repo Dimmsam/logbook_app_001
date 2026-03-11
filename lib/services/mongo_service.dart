@@ -88,11 +88,13 @@ class MongoService {
     }
   }
 
-  /// CREATE: Menambahkan data baru
+  /// CREATE: Menambahkan data baru (upsert berdasarkan _id untuk cegah duplikasi)
   Future<void> insertLog(LogModel log) async {
     try {
       final collection = await _getSafeCollection();
-      await collection.insertOne(log.toMap());
+      final oid = log.id != null ? ObjectId.fromHexString(log.id!) : ObjectId();
+      // replaceOne + upsert: insert jika belum ada, replace jika sudah ada
+      await collection.replaceOne(where.id(oid), log.toMap(), upsert: true);
 
       await LogHelper.writeLog(
         "SUCCESS: Data '${log.title}' Saved to Cloud",

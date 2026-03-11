@@ -9,13 +9,13 @@ class AccessPolicy {
 
   // ── Konstanta aksi ────────────────────────────────────────
   static const String create = 'create';
-  static const String read   = 'read';
+  static const String read = 'read';
   static const String update = 'update';
   static const String delete = 'delete';
 
   // ── Matriks izin per peran ───────────────────────────────
   static const Map<String, List<String>> _permissions = {
-    'Ketua':   [create, read, update, delete],
+    'Ketua': [create, read, update, delete],
     'Anggota': [create, read],
   };
 
@@ -24,18 +24,13 @@ class AccessPolicy {
   /// Parameter [isOwner] diaktifkan ketika pengguna adalah pemilik
   /// data yang akan diubah. Anggota dapat mengubah/menghapus HANYA
   /// data miliknya sendiri (isOwner == true).
-  static bool canPerform(
-    String role,
-    String action, {
-    bool isOwner = false,
-  }) {
+  static bool canPerform(String role, String action, {bool isOwner = false}) {
     if (role == 'Ketua') return true; // Ketua bisa semua aksi
 
     final allowed = _permissions[role] ?? [];
 
     // Anggota: update/delete hanya boleh jika pemilik data
-    if (role == 'Anggota' &&
-        (action == update || action == delete)) {
+    if (role == 'Anggota' && (action == update || action == delete)) {
       return isOwner;
     }
 

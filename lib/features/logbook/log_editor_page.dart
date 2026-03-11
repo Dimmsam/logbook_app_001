@@ -5,14 +5,12 @@ import 'package:logbook_app_001/features/logbook/models/log_model.dart';
 
 class LogEditorPage extends StatefulWidget {
   final LogModel? log;
-  final int? index;
   final LogController controller;
   final dynamic currentUser;
 
   const LogEditorPage({
     super.key,
     this.log,
-    this.index,
     required this.controller,
     required this.currentUser,
   });
@@ -24,6 +22,14 @@ class LogEditorPage extends StatefulWidget {
 class _LogEditorPageState extends State<LogEditorPage> {
   late TextEditingController _titleController;
   late TextEditingController _descController;
+  bool _isPublic = false;
+  String _category = 'Software';
+
+  static const List<String> _categories = [
+    'Mechanical',
+    'Electronic',
+    'Software',
+  ];
 
   @override
   void initState() {
@@ -32,6 +38,8 @@ class _LogEditorPageState extends State<LogEditorPage> {
     _descController = TextEditingController(
       text: widget.log?.description ?? '',
     );
+    _isPublic = widget.log?.isPublic ?? false;
+    _category = widget.log?.category ?? 'Software';
     _descController.addListener(() {
       setState(() {});
     });
@@ -59,9 +67,17 @@ class _LogEditorPageState extends State<LogEditorPage> {
           desc,
           widget.currentUser['uid'],
           widget.currentUser['teamId'],
+          isPublic: _isPublic,
+          category: _category,
         );
       } else {
-        widget.controller.updateLog(widget.index!, title, desc);
+        await widget.controller.updateLog(
+          widget.log!.id!,
+          title,
+          desc,
+          _isPublic,
+          _category,
+        );
       }
 
       if (context.mounted) {
@@ -130,6 +146,49 @@ class _LogEditorPageState extends State<LogEditorPage> {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
+                  // Toggle visibilitas catatan
+                  SwitchListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    secondary: Icon(
+                      _isPublic ? Icons.public : Icons.lock_outline,
+                      color: _isPublic ? Colors.blue : Colors.grey,
+                    ),
+                    title: Text(
+                      _isPublic
+                          ? 'Publik (Tim bisa melihat)'
+                          : 'Privat (Hanya saya)',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    value: _isPublic,
+                    onChanged: (val) => setState(() => _isPublic = val),
+                  ),
+                  // Dropdown kategori
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.label_outline,
+                        size: 20,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text('Kategori:', style: TextStyle(fontSize: 14)),
+                      const SizedBox(width: 12),
+                      DropdownButton<String>(
+                        value: _category,
+                        isDense: true,
+                        underline: const SizedBox(),
+                        items: _categories
+                            .map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)),
+                            )
+                            .toList(),
+                        onChanged: (val) =>
+                            setState(() => _category = val ?? _category),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 8),
                   TextField(
                     controller: _titleController,
                     decoration: const InputDecoration(labelText: "Judul"),
@@ -150,7 +209,16 @@ class _LogEditorPageState extends State<LogEditorPage> {
                 ],
               ),
             ),
-            Markdown(data: _descController.text),
+            // Tab Pratinjau: MarkdownBody di dalam SingleChildScrollView
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: MarkdownBody(
+                data: _descController.text.isEmpty
+                    ? '_Belum ada teks untuk ditampilkan..._'
+                    : _descController.text,
+                selectable: true,
+              ),
+            ),
           ],
         ),
       ),

@@ -23,6 +23,15 @@ class LogModel {
   @HiveField(5)
   final String teamId;
 
+  /// true  = seluruh anggota tim bisa melihat catatan ini.
+  /// false = hanya pemilik (authorId) yang bisa melihat.
+  @HiveField(6)
+  final bool isPublic;
+
+  /// Kategori catatan: 'Mechanical', 'Electronic', atau 'Software'.
+  @HiveField(7)
+  final String category;
+
   LogModel({
     this.id,
     required this.title,
@@ -30,6 +39,8 @@ class LogModel {
     required this.date,
     required this.authorId,
     required this.teamId,
+    this.isPublic = false,
+    this.category = 'Software',
   });
 
   Map<String, dynamic> toMap() => {
@@ -39,6 +50,8 @@ class LogModel {
     'date': date,
     'authorId': authorId,
     'teamId': teamId,
+    'isPublic': isPublic,
+    'category': category,
   };
 
   factory LogModel.fromMap(Map<String, dynamic> map) {
@@ -49,6 +62,8 @@ class LogModel {
       date: map['date'] ?? '',
       authorId: map['authorId'] ?? 'unknown_user',
       teamId: map['teamId'] ?? 'no_team',
+      isPublic: map['isPublic'] as bool? ?? false,
+      category: map['category'] as String? ?? 'Software',
     );
   }
 }
