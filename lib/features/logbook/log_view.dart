@@ -64,26 +64,51 @@ class _LogViewState extends State<LogView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFFFFF),
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(widget.currentUser['username']),
-            const SizedBox(width: 8),
-            Chip(
-              label: Text(
-                widget.currentUser['role'],
-                style: const TextStyle(fontSize: 11, color: Colors.white),
+            Text(
+              widget.currentUser['username'],
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: widget.currentUser['role'] == 'Ketua'
+                    ? const Color(0xFF6366F1)
+                    : const Color(0xFF0D9488),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color:
+                        (widget.currentUser['role'] == 'Ketua'
+                                ? const Color(0xFF6366F1)
+                                : const Color(0xFF0D9488))
+                            .withOpacity(0.30),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              backgroundColor: widget.currentUser['role'] == 'Ketua'
-                  ? Colors.indigo
-                  : Colors.teal,
-              padding: EdgeInsets.zero,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              child: Text(
+                widget.currentUser['role'],
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
+                ),
+              ),
             ),
           ],
         ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1A1A2E),
+        elevation: 0,
+        surfaceTintColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -133,13 +158,26 @@ class _LogViewState extends State<LogView> {
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Cari judul atau isi catatan...',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF6366F1),
+                    width: 1.5,
+                  ),
                 ),
                 isDense: true,
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: const Color(0xFFF9FAFB),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
               onChanged: (val) => _searchQuery.value = val,
             ),
@@ -207,6 +245,13 @@ class _LogViewState extends State<LogView> {
                             onPressed: () => _goToEditor(),
                             icon: const Icon(Icons.add),
                             label: const Text('Buat Catatan Pertama'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6366F1),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ],
                       ],
@@ -226,6 +271,12 @@ class _LogViewState extends State<LogView> {
                     // ── Category-Color Coded Card ─────────────────
                     return Card(
                       clipBehavior: Clip.hardEdge,
+                      elevation: 2,
+                      shadowColor: Colors.black12,
+                      surfaceTintColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       margin: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 6,
@@ -251,7 +302,13 @@ class _LogViewState extends State<LogView> {
                                         : Colors.green,
                                   ),
                                 ),
-                                title: Text(log.title),
+                                title: Text(
+                                  log.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
+                                ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -329,8 +386,48 @@ class _LogViewState extends State<LogView> {
                                           Icons.delete,
                                           color: Colors.red,
                                         ),
-                                        onPressed: () =>
-                                            _controller.removeLog(log.id!),
+                                        onPressed: () => showDialog(
+                                          context: context,
+                                          builder: (ctx) => AlertDialog(
+                                            title: const Text('Hapus Catatan'),
+                                            content: Text(
+                                              'Yakin ingin menghapus "${log.title}"? Tindakan ini tidak dapat dibatalkan.',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(ctx),
+                                                child: const Text('Batal'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.pop(ctx);
+                                                  _controller.removeLog(
+                                                    log.id!,
+                                                  );
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        '"${log.title}" berhasil dihapus.',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ),
+                                                  );
+                                                },
+                                                child: const Text(
+                                                  'Hapus',
+                                                  style: TextStyle(
+                                                    color: Colors.red,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                   ],
                                 ),
@@ -349,6 +446,9 @@ class _LogViewState extends State<LogView> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _goToEditor(),
+        tooltip: 'Buat Catatan Baru',
+        backgroundColor: const Color(0xFF6366F1),
+        foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
     );

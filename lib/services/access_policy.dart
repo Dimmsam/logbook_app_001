@@ -1,9 +1,9 @@
 /// Mengelola izin aksi berdasarkan peran pengguna dalam tim.
 ///
-/// Peran:
-/// - 'Ketua'  : dapat melakukan semua aksi pada seluruh log tim.
-/// - 'Anggota': dapat membuat dan membaca semua log; hanya
-///              dapat mengubah/menghapus log miliknya sendiri.
+/// Aturan visibilitas & aksi:
+/// - Log Privat  : hanya pemilik (authorId) yang bisa melihat.
+/// - Log Publik  : semua anggota tim bisa melihat.
+/// - Edit/Hapus  : hanya pemilik, tidak peduli perannya (Ketua sekalipun).
 class AccessPolicy {
   AccessPolicy._(); // Kelas statis, tidak perlu diinstansiasi.
 
@@ -13,27 +13,22 @@ class AccessPolicy {
   static const String update = 'update';
   static const String delete = 'delete';
 
-  // ── Matriks izin per peran ───────────────────────────────
+  // ── Matriks izin dasar per peran ─────────────────────────
+  // Update dan delete memerlukan syarat tambahan: isOwner == true.
   static const Map<String, List<String>> _permissions = {
-    'Ketua': [create, read, update, delete],
+    'Ketua': [create, read],
     'Anggota': [create, read],
   };
 
   /// Mengembalikan `true` apabila [role] diizinkan melakukan [action].
   ///
-  /// Parameter [isOwner] diaktifkan ketika pengguna adalah pemilik
-  /// data yang akan diubah. Anggota dapat mengubah/menghapus HANYA
-  /// data miliknya sendiri (isOwner == true).
+  /// [isOwner] harus `true` apabila pengguna adalah pemilik data.
+  /// Update dan delete **hanya** diizinkan bagi pemilik data,
+  /// tanpa pengecualian berdasarkan peran.
   static bool canPerform(String role, String action, {bool isOwner = false}) {
-    if (role == 'Ketua') return true; // Ketua bisa semua aksi
+    // Edit/hapus: siapapun hanya boleh pada data miliknya sendiri
+    if (action == update || action == delete) return isOwner;
 
-    final allowed = _permissions[role] ?? [];
-
-    // Anggota: update/delete hanya boleh jika pemilik data
-    if (role == 'Anggota' && (action == update || action == delete)) {
-      return isOwner;
-    }
-
-    return allowed.contains(action);
+    return (_permissions[role] ?? []).contains(action);
   }
 }

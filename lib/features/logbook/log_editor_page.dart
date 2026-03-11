@@ -31,6 +31,21 @@ class _LogEditorPageState extends State<LogEditorPage> {
     'Software',
   ];
 
+  static const List<Map<String, String>> _mdHints = [
+    {'label': '**Tebal**', 'syntax': '**teks tebal**'},
+    {'label': '_Miring_', 'syntax': '_teks miring_'},
+    {'label': '# H1', 'syntax': '# Judul 1\n'},
+    {'label': '## H2', 'syntax': '## Judul 2\n'},
+    {'label': '### H3', 'syntax': '### Judul 3\n'},
+    {'label': '• List', 'syntax': '- item\n'},
+    {'label': '1. Nomor', 'syntax': '1. item\n'},
+    {'label': '`kode`', 'syntax': '`kode`'},
+    {'label': '```blok```', 'syntax': '```\nkode\n```\n'},
+    {'label': '> Kutipan', 'syntax': '> kutipan\n'},
+    {'label': '---', 'syntax': '---\n'},
+    {'label': '[Link]', 'syntax': '[teks](https://url)'},
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -107,6 +122,21 @@ class _LogEditorPageState extends State<LogEditorPage> {
     }
   }
 
+  void _insertSnippet(String snippet) {
+    final ctrl = _descController;
+    final base = ctrl.selection.isValid
+        ? ctrl.selection.start
+        : ctrl.text.length;
+    final extent = ctrl.selection.isValid
+        ? ctrl.selection.end
+        : ctrl.text.length;
+    final newText = ctrl.text.replaceRange(base, extent, snippet);
+    ctrl.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: base + snippet.length),
+    );
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -119,12 +149,24 @@ class _LogEditorPageState extends State<LogEditorPage> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          title: Text(widget.log == null ? "Catatan Baru" : "Edit Catatan"),
+          backgroundColor: Colors.white,
+          foregroundColor: const Color(0xFF1A1A2E),
+          elevation: 0,
+          surfaceTintColor: Colors.white,
+          title: Text(
+            widget.log == null ? 'Catatan Baru' : 'Edit Catatan',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
           bottom: const TabBar(
+            labelColor: Color(0xFF6366F1),
+            unselectedLabelColor: Color(0xFF9CA3AF),
+            indicatorColor: Color(0xFF6366F1),
+            indicatorWeight: 3,
             tabs: [
-              Tab(text: "Editor"),
-              Tab(text: "Pratinjau"),
+              Tab(text: 'Editor'),
+              Tab(text: 'Pratinjau'),
             ],
           ),
           actions: [
@@ -164,54 +206,192 @@ class _LogEditorPageState extends State<LogEditorPage> {
                     onChanged: (val) => setState(() => _isPublic = val),
                   ),
                   // Dropdown kategori
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.label_outline,
-                        size: 20,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text('Kategori:', style: TextStyle(fontSize: 14)),
-                      const SizedBox(width: 12),
-                      DropdownButton<String>(
-                        value: _category,
-                        isDense: true,
-                        underline: const SizedBox(),
-                        items: _categories
-                            .map(
-                              (c) => DropdownMenuItem(value: c, child: Text(c)),
-                            )
-                            .toList(),
-                        onChanged: (val) =>
-                            setState(() => _category = val ?? _category),
-                      ),
-                    ],
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.label_outline,
+                          size: 18,
+                          color: Color(0xFF6B7280),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Kategori',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                        const Spacer(),
+                        DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _category,
+                            isDense: true,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF111827),
+                            ),
+                            items: _categories
+                                .map(
+                                  (c) => DropdownMenuItem(
+                                    value: c,
+                                    child: Text(c),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (val) =>
+                                setState(() => _category = val ?? _category),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const Divider(height: 8),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 14),
                   TextField(
                     controller: _titleController,
-                    decoration: const InputDecoration(labelText: "Judul"),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: 'Judul Catatan',
+                      labelStyle: const TextStyle(color: Color(0xFF6B7280)),
+                      filled: true,
+                      fillColor: const Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF6366F1),
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 10),
+                  // ── Markdown Toolbar ─────────────────────────────
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Format Markdown yang tersedia:',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF9CA3AF),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _mdHints
+                                .map(
+                                  (h) => Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: InkWell(
+                                      onTap: () => _insertSnippet(h['syntax']!),
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                          border: Border.all(
+                                            color: const Color(0xFFD1D5DB),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          h['label']!,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF374151),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Expanded(
                     child: TextField(
                       controller: _descController,
                       maxLines: null,
                       expands: true,
                       keyboardType: TextInputType.multiline,
-                      decoration: const InputDecoration(
-                        hintText: "Tulis laporan dengan format Markdown...",
-                        border: InputBorder.none,
+                      style: const TextStyle(fontSize: 14, height: 1.6),
+                      decoration: InputDecoration(
+                        hintText: 'Tulis laporan dengan format Markdown...',
+                        hintStyle: const TextStyle(color: Color(0xFFD1D5DB)),
+                        filled: true,
+                        fillColor: const Color(0xFFFAFAFA),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE5E7EB),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFE5E7EB),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF6366F1),
+                            width: 1.5,
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.all(12),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            // Tab Pratinjau: MarkdownBody di dalam SingleChildScrollView
+            // Tab Pratinjau
             SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
               child: MarkdownBody(
                 data: _descController.text.isEmpty
                     ? '_Belum ada teks untuk ditampilkan..._'

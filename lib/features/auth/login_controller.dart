@@ -1,20 +1,20 @@
 // login_controller.dart
 class LoginController {
   final Map<String, String> _users = {
-    'user1': 'password1',
-    'user2': 'password2',
+    'gugun': 'password1',
+    'bagas': 'password2',
   };
 
   static const Map<String, Map<String, dynamic>> _userProfiles = {
-    'user1': {
+    'gugun': {
       'uid': 'user1',
-      'username': 'User Satu',
+      'username': 'Gugun',
       'role': 'Ketua',
       'teamId': 'team_001',
     },
-    'user2': {
+    'bagas': {
       'uid': 'user2',
-      'username': 'User Dua',
+      'username': 'Bagas',
       'role': 'Anggota',
       'teamId': 'team_001',
     },
