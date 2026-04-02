@@ -1,6 +1,6 @@
 // test/module1_counter_test.dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:logbook_app_001/features/logbook/counter_controller.dart';
+import 'package:logbook_app_001/features/logbook/counter_controller_modul1.dart';
 
 void main() {
   var actual, expected;
