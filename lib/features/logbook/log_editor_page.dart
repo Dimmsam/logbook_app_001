@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:logbook_app_001/features/logbook/log_controller.dart';
 import 'package:logbook_app_001/features/logbook/models/log_model.dart';
+import 'package:logbook_app_001/features/vision/vision_view.dart';
 
 class LogEditorPage extends StatefulWidget {
   final LogModel? log;
@@ -24,6 +26,11 @@ class _LogEditorPageState extends State<LogEditorPage> {
   late TextEditingController _descController;
   bool _isPublic = false;
   String _category = 'Software';
+
+  // Vision & Image Capture State
+  Uint8List? _capturedImage; // Original image before PCD processing
+  Uint8List? _processedImage; // Image after PCD filter applied
+  String? _selectedPcdFilter; // PCD filter name used
 
   static const List<String> _categories = [
     'Mechanical',
@@ -76,47 +83,62 @@ class _LogEditorPageState extends State<LogEditorPage> {
     setState(() => _isSaving = true);
 
     try {
+      // Gunakan processed image jika ada, fallback ke original
+      final imageToSave = _processedImage ?? _capturedImage;
+
+      // Tambah image info ke description jika ada captured image
+      String finalDesc = desc;
+      if (imageToSave != null) {
+        final filterInfo = _selectedPcdFilter != null
+            ? ' (Filter: $_selectedPcdFilter)'
+            : '';
+        finalDesc +=
+            '\n\n[📷 Smart-Patrol Vision dengan Detection$filterInfo]\n';
+      }
+
       if (widget.log == null) {
         await widget.controller.addLog(
           title,
-          desc,
+          finalDesc,
           widget.currentUser['uid'],
           widget.currentUser['teamId'],
           isPublic: _isPublic,
           category: _category,
+          imageBytes: imageToSave,
+          imageFilter: _selectedPcdFilter,
         );
       } else {
         await widget.controller.updateLog(
           widget.log!.id!,
           title,
-          desc,
+          finalDesc,
           _isPublic,
           _category,
+          imageBytes: imageToSave,
+          imageFilter: _selectedPcdFilter,
         );
       }
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              widget.log == null
-                  ? 'Catatan berhasil disimpan!'
-                  : 'Catatan berhasil diperbarui!',
-            ),
-            backgroundColor: Colors.green,
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.log == null
+                ? 'Catatan berhasil disimpan!'
+                : 'Catatan berhasil diperbarui!',
           ),
-        );
-        Navigator.pop(context);
-      }
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal menyimpan ke cloud: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menyimpan ke cloud: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -134,6 +156,205 @@ class _LogEditorPageState extends State<LogEditorPage> {
     ctrl.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: base + snippet.length),
+    );
+  }
+
+  /// Buka Vision untuk capture & process gambar dengan detection + PCD filter
+  /// Vision always returns result from PcdResultPage: {'original', 'processed', 'filter'}
+  Future<void> _openVisionCapture() async {
+    final result = await Navigator.push<Map<String, dynamic>?>(
+      context,
+      MaterialPageRoute(builder: (_) => const VisionView()),
+    );
+
+    if (result != null && mounted) {
+      final original = result['original'] as Uint8List?;
+      final processed = result['processed'] as Uint8List?;
+      final filter = result['filter'] as String?;
+
+      if (original != null && processed != null && filter != null) {
+        setState(() {
+          _capturedImage = original; // Keep original for reference
+          _processedImage = processed; // Use processed image for saving
+          _selectedPcdFilter = filter;
+        });
+      }
+    }
+  }
+
+  /// Dialog untuk pilih PCD filter
+  Future<void> _showPcdFilterDialog() async {
+    final filters = [
+      'Grayscale',
+      'Blur',
+      'Sharpen',
+      'Threshold',
+      'CLAHE',
+      'Canny Edge',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pilih Filter PCD'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: filters.length,
+            itemBuilder: (context, index) {
+              return ListTile(
+                title: Text(filters[index]),
+                onTap: () {
+                  Navigator.pop(context);
+                  _applyPcdFilter(filters[index]);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Apply PCD filter ke captured image
+  Future<void> _applyPcdFilter(String filter) async {
+    if (_capturedImage == null) return;
+
+    try {
+      setState(() {
+        _selectedPcdFilter = filter;
+        // Dalam implementasi real, di sini akan dipanggil PCD processor
+        // Untuk sekarang simulasi saja - image tetap sama
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Filter "$filter" diterapkan')));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  /// Hapus captured image
+  void _clearImage() {
+    setState(() {
+      _capturedImage = null;
+      _selectedPcdFilter = null;
+    });
+  }
+
+  /// Build image preview section
+  Widget _buildImagePreviewSection() {
+    if (_capturedImage == null) {
+      return GestureDetector(
+        onTap: _openVisionCapture,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
+            borderRadius: BorderRadius.circular(12),
+            color: const Color(0xFFF9FAFB),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.camera_alt, size: 48, color: const Color(0xFF9CA3AF)),
+              const SizedBox(height: 12),
+              const Text(
+                'Tap untuk capture gambar',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF6B7280),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Dari Smart-Patrol Vision',
+                style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          // Image preview
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Image.memory(
+              _capturedImage!,
+              fit: BoxFit.cover,
+              height: 180,
+              width: double.infinity,
+            ),
+          ),
+          // Filter info + actions
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Gambar ditangkap',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                      if (_selectedPcdFilter != null)
+                        Text(
+                          'Filter: $_selectedPcdFilter',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF111827),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: _showPcdFilterDialog,
+                  iconSize: 20,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _clearImage,
+                  iconSize: 20,
+                  color: Colors.red,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -205,6 +426,9 @@ class _LogEditorPageState extends State<LogEditorPage> {
                     value: _isPublic,
                     onChanged: (val) => setState(() => _isPublic = val),
                   ),
+                  const SizedBox(height: 16),
+                  // Image Capture Section - Smart-Patrol Vision
+                  _buildImagePreviewSection(),
                   // Dropdown kategori
                   Container(
                     margin: const EdgeInsets.only(bottom: 4),

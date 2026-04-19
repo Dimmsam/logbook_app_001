@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logbook_app_001/features/auth/login_controller_modul2.dart';
 
 void main() {
-  var actual, expected;
+  Object? actual;
+  Object? expected;
 
   group('Module 2 - LoginController (Authentication)', () {
     late LoginController controller;
@@ -23,28 +24,25 @@ void main() {
       // controller sudah fresh dari setUp()
 
       // (2) Act
-      actual   = controller.login('', '');
+      actual = controller.login('', '');
       expected = LoginResult.emptyField;
 
       // (3) Assert
-      expect(actual, expected,
-        reason: 'Expected $expected but got $actual');
+      expect(actual, expected, reason: 'Expected $expected but got $actual');
     });
 
     // TC02 ──────────────────────────────────────────────────
     test('TC02: login returns emptyField when username is empty', () {
-      actual   = controller.login('', 'password1');
+      actual = controller.login('', 'password1');
       expected = LoginResult.emptyField;
-      expect(actual, expected,
-        reason: 'Expected $expected but got $actual');
+      expect(actual, expected, reason: 'Expected $expected but got $actual');
     });
 
     // TC03 ──────────────────────────────────────────────────
     test('TC03: login returns emptyField when password is empty', () {
-      actual   = controller.login('user1', '');
+      actual = controller.login('user1', '');
       expected = LoginResult.emptyField;
-      expect(actual, expected,
-        reason: 'Expected $expected but got $actual');
+      expect(actual, expected, reason: 'Expected $expected but got $actual');
     });
 
     // ═══════════════════════════════════════════════════════
@@ -53,26 +51,23 @@ void main() {
 
     // TC04 ──────────────────────────────────────────────────
     test('TC04: login returns success with valid credentials', () {
-      actual   = controller.login('user1', 'password1');
+      actual = controller.login('user1', 'password1');
       expected = LoginResult.success;
-      expect(actual, expected,
-        reason: 'Expected $expected but got $actual');
+      expect(actual, expected, reason: 'Expected $expected but got $actual');
     });
 
     // TC05 ──────────────────────────────────────────────────
     test('TC05: login returns wrongCredential — username not registered', () {
-      actual   = controller.login('userXYZ', 'password1');
+      actual = controller.login('userXYZ', 'password1');
       expected = LoginResult.wrongCredential;
-      expect(actual, expected,
-        reason: 'Expected $expected but got $actual');
+      expect(actual, expected, reason: 'Expected $expected but got $actual');
     });
 
     // TC06 ──────────────────────────────────────────────────
     test('TC06: login returns wrongCredential — password wrong', () {
-      actual   = controller.login('user1', 'wrongpass');
+      actual = controller.login('user1', 'wrongpass');
       expected = LoginResult.wrongCredential;
-      expect(actual, expected,
-        reason: 'Expected $expected but got $actual');
+      expect(actual, expected, reason: 'Expected $expected but got $actual');
     });
 
     // ═══════════════════════════════════════════════════════
@@ -86,29 +81,30 @@ void main() {
       // (2) Act: gagal 3x
       controller.login('user1', 'wrongpass'); // attempt 1
       controller.login('user1', 'wrongpass'); // attempt 2
-      actual   = controller.login('user1', 'wrongpass'); // attempt 3 → locked
+      actual = controller.login('user1', 'wrongpass'); // attempt 3 → locked
       expected = LoginResult.locked;
 
       // (3) Assert: return value + state isLocked
-      expect(actual, expected,
-        reason: 'Expected $expected but got $actual');
-      expect(controller.isLocked, true,
-        reason: 'isLocked should be true after 3 failed attempts');
+      expect(actual, expected, reason: 'Expected $expected but got $actual');
+      expect(
+        controller.isLocked,
+        true,
+        reason: 'isLocked should be true after 3 failed attempts',
+      );
     });
 
     // TC08 ──────────────────────────────────────────────────
     test('TC08: login returns locked when account is still locked', () {
       // (1) Arrange: simulasi akun sudah terkunci
-      controller.isLocked   = true;
+      controller.isLocked = true;
       controller.lockEndTime = DateTime.now().add(const Duration(seconds: 10));
 
       // (2) Act: coba login meski credentials benar
-      actual   = controller.login('user1', 'password1');
+      actual = controller.login('user1', 'password1');
       expected = LoginResult.locked;
 
       // (3) Assert
-      expect(actual, expected,
-        reason: 'Expected $expected but got $actual');
+      expect(actual, expected, reason: 'Expected $expected but got $actual');
     });
 
     // TC09 ──────────────────────────────────────────────────
@@ -116,13 +112,11 @@ void main() {
       // (1) Arrange: controller fresh, isLocked = false
 
       // (2) Act
-      actual   = controller.getRemainingSeconds();
+      actual = controller.getRemainingSeconds();
       expected = 0;
 
       // (3) Assert
-      expect(actual, expected,
-        reason: 'Expected $expected but got $actual');
+      expect(actual, expected, reason: 'Expected $expected but got $actual');
     });
-
   }); // end group
 }

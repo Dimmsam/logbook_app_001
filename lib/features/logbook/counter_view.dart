@@ -17,14 +17,14 @@ class _CounterViewState extends State<CounterView> {
     text: '1',
   );
 
-String getGreeting() {
-  final hour = DateTime.now().hour;
+  String getGreeting() {
+    final hour = DateTime.now().hour;
 
-  if (hour >= 5 && hour < 11) return "Selamat Pagi";
-  if (hour >= 11 && hour < 15) return "Selamat Siang";
-  if (hour >= 15 && hour < 18) return "Selamat Sore";
-  return "Selamat Malam";
-}
+    if (hour >= 5 && hour < 11) return "Selamat Pagi";
+    if (hour >= 11 && hour < 15) return "Selamat Siang";
+    if (hour >= 15 && hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  }
 
   @override
   void initState() {
@@ -263,8 +263,9 @@ String getGreeting() {
               onPressed: () async {
                 Navigator.of(context).pop();
                 await _controller.reset();
+                if (!mounted) return;
                 setState(() {});
-                _showSuccessRestart("Berhasil mereset counter!", context);
+                _showSuccessRestart("Berhasil mereset counter!", this.context);
               },
               child: const Text("Restart", style: TextStyle(color: Colors.red)),
             ),

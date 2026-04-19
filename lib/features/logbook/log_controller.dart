@@ -75,7 +75,15 @@ class LogController extends ChangeNotifier {
     String teamId, {
     bool isPublic = false,
     String category = 'Software',
+    Uint8List? imageBytes,
+    String? imageFilter,
   }) async {
+    // Encode image to Base64 if provided
+    String? encodedImage;
+    if (imageBytes != null) {
+      encodedImage = LogModel.encodeImageToBase64(imageBytes);
+    }
+
     final newLog = LogModel(
       id: ObjectId().oid,
       title: title,
@@ -85,6 +93,8 @@ class LogController extends ChangeNotifier {
       teamId: teamId,
       isPublic: isPublic,
       category: category,
+      imageData: encodedImage,
+      imageFilter: imageFilter,
     );
     await _myBox.add(newLog);
     logsNotifier.value = [...logsNotifier.value, newLog];
@@ -114,8 +124,10 @@ class LogController extends ChangeNotifier {
     String title,
     String desc,
     bool isPublic,
-    String category,
-  ) async {
+    String category, {
+    Uint8List? imageBytes,
+    String? imageFilter,
+  }) async {
     final current = logsNotifier.value;
     final targetIndex = current.indexWhere((l) => l.id == logId);
     if (targetIndex == -1) return;
@@ -131,6 +143,13 @@ class LogController extends ChangeNotifier {
       return;
     }
 
+    // Encode image to Base64 if provided
+    String? encodedImage = target.imageData;
+    if (imageBytes != null) {
+      encodedImage = LogModel.encodeImageToBase64(imageBytes);
+    }
+    String? filterToUse = imageFilter ?? target.imageFilter;
+
     final updated = LogModel(
       id: target.id,
       title: title,
@@ -140,6 +159,8 @@ class LogController extends ChangeNotifier {
       teamId: target.teamId,
       isPublic: isPublic,
       category: category,
+      imageData: encodedImage,
+      imageFilter: filterToUse,
     );
 
     final newList = [...logsNotifier.value];
@@ -159,6 +180,36 @@ class LogController extends ChangeNotifier {
       await MongoService().updateLog(updated);
     } catch (_) {
       // Data sudah aman di Hive, sync cloud tidak kritikal
+    }
+  }
+
+  /// Save Camera PCD capture langsung ke MongoDB (tanpa LogEditorPage)
+  Future<void> saveCameraPcd({
+    required String originalImageBase64,
+    required String processedImageBase64,
+    required String filterName,
+    required String teamId,
+  }) async {
+    try {
+      await MongoService().insertCameraPcd(
+        userId: userId,
+        teamId: teamId,
+        originalImage: originalImageBase64,
+        processedImage: processedImageBase64,
+        filterName: filterName,
+      );
+      await LogHelper.writeLog(
+        'Berhasil save Camera PCD ke collection',
+        source: 'log_controller.dart',
+        level: 2,
+      );
+    } catch (e) {
+      await LogHelper.writeLog(
+        'Error save Camera PCD: $e',
+        source: 'log_controller.dart',
+        level: 1,
+      );
+      rethrow;
     }
   }
 

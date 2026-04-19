@@ -115,8 +115,9 @@ class MongoService {
   Future<void> updateLog(LogModel log) async {
     try {
       final collection = await _getSafeCollection();
-      if (log.id == null)
+      if (log.id == null) {
         throw Exception("ID Log tidak ditemukan untuk update");
+      }
 
       await collection.replaceOne(
         where.id(ObjectId.fromHexString(log.id!)),
@@ -152,6 +153,46 @@ class MongoService {
     } catch (e) {
       await LogHelper.writeLog(
         "DATABASE: Hapus Gagal - $e",
+        source: _source,
+        level: 1,
+      );
+      rethrow;
+    }
+  }
+
+  /// CAMERA PCD: Menyimpan hasil capture kamera langsung ke collection terpisah
+  Future<void> insertCameraPcd({
+    required String userId,
+    required String teamId,
+    required String originalImage,
+    required String processedImage,
+    required String filterName,
+  }) async {
+    try {
+      final cameraPcdCollection = _db!.collection('camera_pcd');
+      final docId = ObjectId();
+
+      final cameraPcdData = {
+        '_id': docId,
+        'userId': userId,
+        'teamId': teamId,
+        'originalImage': originalImage,
+        'processedImage': processedImage,
+        'filterName': filterName,
+        'timestamp': DateTime.now().toIso8601String(),
+        'status': 'completed',
+      };
+
+      await cameraPcdCollection.insertOne(cameraPcdData);
+
+      await LogHelper.writeLog(
+        "SUCCESS: Camera PCD Data Saved to Collection camera_pcd",
+        source: _source,
+        level: 2,
+      );
+    } catch (e) {
+      await LogHelper.writeLog(
+        "ERROR: Insert Camera PCD Failed - $e",
         source: _source,
         level: 1,
       );

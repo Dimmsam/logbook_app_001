@@ -1,4 +1,5 @@
 import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart'; // Tetap kita gunakan untuk presisi waktu
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -26,7 +27,7 @@ class LogHelper {
 
       // 4. Output ke Terminal (Agar Bapak bisa lihat di PC saat flutter run)
       // Format: [14:30:05] [INFO] [log_view.dart] -> Database Terhubung
-      print('$color[$timestamp][$label][$source] -> $message\x1B[0m');
+      debugPrint('$color[$timestamp][$label][$source] -> $message\x1B[0m');
     } catch (e) {
       dev.log("Logging failed: $e", name: "SYSTEM", level: 1000);
     }

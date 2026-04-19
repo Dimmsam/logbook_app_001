@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:typed_data';
 import 'package:logbook_app_001/features/auth/login_view.dart';
 import 'package:logbook_app_001/features/logbook/log_controller.dart';
 import 'package:logbook_app_001/features/logbook/log_editor_page.dart';
+import 'package:logbook_app_001/features/vision/vision_view.dart';
 import './models/log_model.dart';
 
 class LogView extends StatefulWidget {
@@ -61,6 +63,56 @@ class _LogViewState extends State<LogView> {
     );
   }
 
+  void _openVisionCapture() async {
+    final result = await Navigator.push<Map<String, dynamic>?>(
+      context,
+      MaterialPageRoute(builder: (context) => const VisionView()),
+    );
+
+    // User tapped "Gunakan" di VisionPcdResultPage
+    if (result != null && mounted) {
+      try {
+        final original = result['original'] as Uint8List?;
+        final processed = result['processed'] as Uint8List?;
+        final filter = result['filter'] as String?;
+
+        if (original != null && processed != null && filter != null) {
+          // Convert Uint8List to Base64 untuk penyimpanan di camera_pcd
+          final originalBase64 = LogModel.encodeImageToBase64(original);
+          final processedBase64 = LogModel.encodeImageToBase64(processed);
+
+          // Save ke collection camera_pcd
+          await _controller.saveCameraPcd(
+            originalImageBase64: originalBase64,
+            processedImageBase64: processedBase64,
+            filterName: filter,
+            teamId: widget.currentUser['teamId'] as String,
+          );
+
+          if (mounted) {
+            // ignore: use_build_context_synchronously
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Capture Camera PCD disimpan!'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          // ignore: use_build_context_synchronously
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Gagal menyimpan: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,7 +139,7 @@ class _LogViewState extends State<LogView> {
                         (widget.currentUser['role'] == 'Ketua'
                                 ? const Color(0xFF6366F1)
                                 : const Color(0xFF0D9488))
-                            .withOpacity(0.30),
+                            .withValues(alpha: 0.30),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -327,12 +379,16 @@ class _LogViewState extends State<LogView> {
                                             vertical: 1,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: catColor.withOpacity(0.12),
+                                            color: catColor.withValues(
+                                              alpha: 0.12,
+                                            ),
                                             borderRadius: BorderRadius.circular(
                                               4,
                                             ),
                                             border: Border.all(
-                                              color: catColor.withOpacity(0.4),
+                                              color: catColor.withValues(
+                                                alpha: 0.4,
+                                              ),
                                               width: 0.8,
                                             ),
                                           ),
@@ -444,12 +500,28 @@ class _LogViewState extends State<LogView> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _goToEditor(),
-        tooltip: 'Buat Catatan Baru',
-        backgroundColor: const Color(0xFF6366F1),
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── FAB 1: Ambil Gambar dengan Vision Camera ──
+          FloatingActionButton.small(
+            onPressed: _openVisionCapture,
+            tooltip: 'Ambil Gambar (PCD)',
+            backgroundColor: const Color(0xFFF59E0B),
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.camera_alt),
+          ),
+          const SizedBox(height: 12),
+          // ── FAB 2: Buat Catatan Baru ──
+          FloatingActionButton(
+            onPressed: () => _goToEditor(),
+            tooltip: 'Buat Catatan Baru',
+            backgroundColor: const Color(0xFF6366F1),
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }

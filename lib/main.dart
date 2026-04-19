@@ -2,13 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:camera/camera.dart';
 import 'package:logbook_app_001/features/logbook/models/log_model.dart';
 import 'package:logbook_app_001/features/onboarding/onboarding_view.dart';
 import 'package:logbook_app_001/services/mongo_service.dart';
 
+// Langkah 1.4: Variabel global untuk menyimpan daftar kamera yang tersedia
+List<CameraDescription> cameras = [];
+
 void main() async {
   // Wajib untuk operasi asinkron sebelum runApp
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Langkah 1.4: Ambil daftar kamera yang tersedia di perangkat
+  try {
+    cameras = await availableCameras();
+  } on CameraException catch (e) {
+    debugPrint('Error kamera: ${e.code}\nPesan: ${e.description}');
+  }
+
   // Load ENV
   await dotenv.load(fileName: ".env");
   // Inisialisasi locale Indonesia untuk library intl
